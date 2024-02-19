@@ -7,12 +7,14 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.filters import Command, CommandStart, Text, StateFilter
 from aiogram.types import CallbackQuery, Message, URLInputFile, InputMediaPhoto, ContentType, LabeledPrice, PreCheckoutQuery
 from database.database import (insert_event, select_all_events, select_one_event, delete_event, insert_user, select_all_users,
-                               select_users_id, select_one_user, insert_booking, insert_booking_table, insert_free_table,
+                               select_users_id, insert_booking, select_all_booking, insert_booking_table, insert_free_table,
                                select_date_table, select_one_table, edit_free_place_table, insert_card, select_all_cards, select_cards_number,
-                               delete_card, select_one_card)
-from keyboards.other_kb import create_menu_kb, create_date_kb, create_backword_menu_kb, create_yes_no_kb, create_cancel_registr_kb
+                               delete_card, select_one_card, select_one_date_table, select_user_id_booking, select_user, select_one_user,
+                               select_all_booking_table)
+from keyboards.other_kb import (create_menu_kb, create_date_kb, create_date_kb_2, create_backword_menu_kb, create_yes_no_kb, create_cancel_registr_kb,
+                                create_cancel_addevent_kb, create_cancel_show_kb, create_cancel_booking_kb, create_cancel_card_kb, create_cancel_newslatter_kb)
 from lexicon.lexicon import LEXICON
-from filters.filters import IsAdmin
+from filters.filters import IsAdmin, IsSecurity
 from services.file_handling import date_func, check_date, check_phone, now_time
 
 router: Router = Router()
@@ -40,7 +42,7 @@ async def process_start_cammand(message: Message, bot: Bot):
 # и отправлять пользователю сообщение со списком доступных команд в боте
 @router.message(Command(commands='help'))
 async def process_help_command(message: Message):
-    await message.answer(LEXICON['/help'], parse_mode='HTML')
+    await message.answer(LEXICON['/help'], reply_markup=create_backword_menu_kb(), parse_mode='HTML')
 
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Вернуться в меню"
@@ -61,7 +63,10 @@ async def process_backward_press(callback: CallbackQuery):
 # и отправлять пользователю сообщение с информацией о клубе
 @router.callback_query(Text(text='info'), StateFilter(default_state))
 async def process_help_command(callback: CallbackQuery):
-    await callback.message.answer('ЗДЕСЬ БУДЕТ ПРИХОДИТЬ СООБЩЕНИЕ С ИНФОРМАЦИЕЙ О КЛУБЕ',
+    await callback.message.delete()
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    text = 'ЗДЕСЬ БУДЕТ ПРИХОДИТЬ СООБЩЕНИЕ С ИНФОРМАЦИЕЙ О КЛУБЕ'
+    await callback.message.answer_photo(photo=photo, caption=text,
                                   reply_markup=create_backword_menu_kb())
 
 
@@ -138,9 +143,9 @@ async def process_event_choosing(message: Message, state: FSMContext):
         # на мероприятие, если нету, то переходим к заполнению формы
         users = select_users_id()
         if str(message.from_user.id) in users:
-            user = select_one_user(message.from_user.id)
+            user(message.from_user.id)
             insert_booking(user['id'], event['id'])
-            await message.answer_photo(photo=event['photo'], caption=f'Дорогой друг, ты зарегестрировался на мероприятие: "{event["name"]}"\nДата проведения: {event["date"]}\nПокажи это сообщение на входе, чтобы пройти')
+            await message.answer_photo(photo=event['photo'], caption=f'<b>{user["first_name"]} {user["last_name"]}</b>, вы зарегестрировались на мероприятие: <b>"{event["name"]}"</b>\nДата проведения: <b>{event["date"]}</b>\n\nПокажите это сообщение на входе, чтобы пройти, до встречи :)', parse_mode='HTML')
             # Завершаем машину состояний
             await state.clear()
         else:
@@ -274,7 +279,7 @@ async def process_yes_button(callback: CallbackQuery, state: FSMContext):
     # добавляем бронирование в базу данных
     insert_booking(user['id'], db['event_id'])
     event = select_one_event(db['event_id'])
-    await callback.message.answer_photo(photo=event['photo'], caption=f'Дорогой друг, ты зарегестрировался на мероприятие: "{event["name"]}"\nДата проведения: {event["date"]}\nПокажи это сообщение на входе, чтобы пройти')
+    await callback.message.answer_photo(photo=event['photo'], caption=f'<b>{user["first_name"]} {user["last_name"]}</b>, вы зарегестрировались на мероприятие: <b>"{event["name"]}"</b>\nДата проведения: <b>{event["date"]}</b>\n\nПокажите это сообщение на входе, чтобы пройти, до встречи :)', parse_mode='HTML')
     # Завершаем машину состояний
     await state.clear()
 
@@ -283,7 +288,7 @@ async def process_yes_button(callback: CallbackQuery, state: FSMContext):
 # при регистрации на мероприятие и отправлать список изменений
 @router.callback_query(Text(text='no'), StateFilter(FSMFillForm.verification_form))
 async def process_yes_button(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer(f'Выберите раздел, в который хотите внести изменения:\n1 - изменить имя;\n2 - изменить фамилию;\n3 - изменить дату рождения;\n4 - изменить номер телефона;')
+    await callback.message.answer(f'Выберите раздел, в который хотите внести изменения:\n1 - изменить имя;\n2 - изменить фамилию;\n3 - изменить дату рождения;\n4 - изменить номер телефона;', reply_markup=create_cancel_registr_kb())
     await state.set_state(FSMFillForm.section_choosing)
 
 
@@ -329,6 +334,7 @@ async def warning_fill_phone(message: Message):
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
     text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Регистрация на мероприятие отменена')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
@@ -357,9 +363,6 @@ class FSMAdmin(StatesGroup):
     # бот в разные моменты взаимодействия с пользователем
     add_event = State()       # Состояние добавления мероприятия
     add_photo_event = State() # Состояние добаления афиши мероприятия
-    # cancel_event = State()       # Состояние отмены мероприятия
-    # show_reserv = State()     # Состояние просмотра брони на мероприятие
-    # edit_event = State()       # Состояние редактирования мероприятия
 
 
 
@@ -367,7 +370,7 @@ class FSMAdmin(StatesGroup):
 # и отправлять в чат правила добавления мероприятия
 @router.message(Command(commands='addevent'), StateFilter(default_state), IsAdmin(config.tg_bot.admin_ids))
 async def process_addevent_command(message: Message, state: FSMContext):
-    await message.answer(text=LEXICON['add'])
+    await message.answer(text=LEXICON['add'], reply_markup=create_cancel_addevent_kb())
     await state.set_state(FSMAdmin.add_event)
 
 
@@ -379,26 +382,27 @@ async def process_add_event(message: Message, state: FSMContext):
     if len(add_list) == 4:
         error = 0
         if '"' in add_list[0] or "'" in add_list[0]:
-            await message.answer('Нахождение ковычек в название мероприятия не допустимо, исправьте название')
+            await message.answer('Нахождение ковычек в название мероприятия не допустимо, исправьте название', reply_markup=create_cancel_addevent_kb())
             error += 1
         if not check_date(add_list[1]):
-            await message.answer(f'Дата введена не в верном формате, введите дату в формате:\ndd.mm.yyyy')
+            await message.answer(f'Дата введена не в верном формате, введите дату в формате:\ndd.mm.yyyy', reply_markup=create_cancel_addevent_kb())
             error += 1
         if '"' in add_list[2] or "'" in add_list[2]:
-            await message.answer('Нахождение ковычек в описании мероприятия не допустимо, исправьте описание')
+            await message.answer('Нахождение ковычек в описании мероприятия не допустимо, исправьте описание', reply_markup=create_cancel_addevent_kb())
             error += 1
         if '"' in add_list[3] or "'" in add_list[3]:
-            await message.answer('Нахождение ковычек в условиях входа не допустимо, исправьте условия входа')
+            await message.answer('Нахождение ковычек в условиях входа не допустимо, исправьте условия входа', reply_markup=create_cancel_addevent_kb())
             error += 1
         if error == 0:
-            await message.answer(f'Отправьте картинку c афишей в ответ на это сообщение\n')
+            await message.answer(f'Отправьте картинку c афишей в ответ на это сообщение\n', reply_markup=create_cancel_addevent_kb())
             await state.update_data(add_list=add_list)
             # Устанавливаем состояние ожидания добаления афиши
             await state.set_state(FSMAdmin.add_photo_event)
     else:
         await message.answer(f'Введенные данные о мероприятии не корректны\n'
                              f'Скорее всего вы забыли поставить ; в конце одного из разделов или поставили лишний знак ;\n'
-                             f'Сравните еще раз введенные данные с шаблоном и после исправления отправьте данные о мероприятии\n\n')
+                             f'Сравните еще раз введенные данные с шаблоном и после исправления отправьте данные о мероприятии\n\n',
+                             reply_markup=create_cancel_addevent_kb())
 
 
 # Этот хэндлер будет добавлять мероприятие
@@ -413,7 +417,127 @@ async def process_add_event(message: Message, state: FSMContext):
         # Завершаем машину состояний
         await state.clear()
     else:
-        await message.answer(f'Отправленное сообщение не является картинкой, отправте картинку афиши\n')
+        await message.answer(f'Отправленное сообщение не является картинкой, отправте картинку афиши\n', reply_markup=create_cancel_addevent_kb())
+
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить добавление мероприятия"
+# и отменять процесс регистрации на мероприятие
+@router.callback_query(Text(text='cancel_addevent'), StateFilter(FSMAdmin))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    text = f"{LEXICON['/start']}"
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Добавление мероприятия отменено')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
+
+
+
+
+
+
+                                # ФУНКЦИЯ ПРОСМОТРА РЕГИСТРАЦИИ НА МЕРОПРИЯТИЕ
+
+
+
+
+
+
+
+
+
+class FSMShowRegistr(StatesGroup):
+    # Создаем экземпляры класса State, последовательно
+    # перечисляя возможные состояния, в которых будет находиться
+    # бот в разные моменты взаимодействия с пользователем
+    event_choosing = State() # Состояние выбора мероприятия
+
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить просмотр"
+# и отменять процесс регистрации на мероприятие
+@router.callback_query(Text(text='cancel_show'), StateFilter(FSMShowRegistr))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    text = f"{LEXICON['/start']}"
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Просмотр списка регистраций на мероприятие отменен')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
+
+
+
+# этот хэндлер будет срабатывать на команду /showregistr
+# и отправлять пользователю сообщение с выбором даты
+@router.message(Command(commands='showregistr'), StateFilter(default_state))
+async def process_showregistr_command(message: Message, state: FSMContext):
+    if message.from_user.id in config.tg_bot.admin_ids or message.from_user.id in config.tg_bot.security_ids:
+        events_list = []
+        id_list = []
+        num = 1
+        events = select_all_events()
+        if len(events) != 0:
+            for event in events:
+                try:
+                    events_list.append(f'{num}) "{event["name"]}"\n{event["description"]}\n'
+                                f'Дата: {event["date"]}\n'
+                                f'<b>КОД МЕРОПРИЯТИЯ 👉🏻 {event["id"]}</b>')
+                    id_list.append(event["id"])
+                except:
+                    print(f"При проверке мероприятия произошла ошибка: {Exception.__class__}")
+                num += 1
+            if len(events_list) == 0:
+                await message.answer("К сожалению на данный момент нету запланированных мероприятий, попробуйте проверить позже.")
+            else:
+                events = f'\n\n'.join(events_list)
+                text = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+                await message.answer(text=text, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
+                # Устанавливаем состояние ожидания выбора мероприятия
+                await state.set_state(FSMShowRegistr.event_choosing)
+                await state.update_data(id_list=id_list)
+        else:
+            await message.answer("К сожалению на данный момент запланированных мероприятий нет, попробуйте проверить позже.")
+    else:
+        await message.answer("Вы не являетесь администратором, доступ закрыт")
+
+
+# Этот хэндлер будет срабатывать, если введен корректный номер мероприятия
+@router.message(StateFilter(FSMShowRegistr.event_choosing), lambda x: x.text.isdigit())
+async def process_event_choosing(message: Message, state: FSMContext):
+    db = await state.get_data()
+    id_list = db['id_list']
+    if int(message.text) in id_list:
+        registr_user_id = select_user_id_booking(message.text)
+        event = select_one_event(message.text)
+        user_list = []
+        num = 1
+        for id in registr_user_id:
+            user = select_user(id)
+            if message.from_user.id in config.tg_bot.admin_ids:
+                user_list.append(f'{num}) <b>Имя</b>: {user["first_name"]}\n<b>Фамилия</b>: {user["last_name"]}\n<b>Дата рождения</b>: {user["birthday"]}\n<b>Номер телефона</b>: {user["phone"]}')
+            elif message.from_user.id in config.tg_bot.security_ids:
+                user_list.append(f'{num}) <b>Имя</b>: {user["first_name"]}\n<b>Фамилия</b>: {user["last_name"]}')
+            num += 1
+        if len(user_list) != 0:
+            all_user = f'\n\n'.join(user_list)
+            await message.answer(f'На {event["name"]} зарегестрировались:\n\n{all_user}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+            await state.clear()
+        else:
+            await message.answer(f'На {event["name"]} пока никого не зарегестрировалось', reply_markup=create_backword_menu_kb())
+            await state.clear()
+    else:
+        await message.answer(text=f'Введен не верный код мероприятия, попробуйте еще раз', reply_markup=create_cancel_show_kb())
 
 
 
@@ -443,13 +567,20 @@ class FSMBooking(StatesGroup):
     verification_pay = State() # Состояние подтверждения оплаты
 
 
-
-# Этот хэндлер будет срабатывать на команду "/cancel"
-# в состоянии бронирования столика
-@router.message(Command(commands='cancel'), StateFilter(FSMBooking))
-async def process_cancel_command_state(message: Message, state: FSMContext):
-    await message.answer(text=f'Бронирование отменено.')
-    # Сбрасываем состояние и очищаем данные, полученные внутри состояний
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить бронирование"
+# и отменять процесс бронирования столика
+@router.callback_query(Text(text='cancel_booking'), StateFilter(FSMBooking))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    text = f"{LEXICON['/start']}"
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Бронирование отменено')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
     await state.clear()
 
 
@@ -459,7 +590,7 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
 async def process_booking_press(callback: CallbackQuery, state: FSMContext):
     date_list = date_func()
     await callback.message.delete()
-    await callback.message.answer('ВЫБЕРИ ДАТУ, НА КОТОРУЮ ХОЧЕШЬ ЗАБРОНИРОВАТЬ СТОЛИК:', reply_markup=create_date_kb(date_list))
+    await callback.message.answer('Выберите дату, на которую хотите забронировать столик:', reply_markup=create_date_kb(date_list))
     # Устанавливаем состояние ожидания выбора даты
     await state.set_state(FSMBooking.date_choosing)
 
@@ -479,14 +610,12 @@ async def process_date_press(callback: CallbackQuery, state: FSMContext):
     if int(one_table['free_place']) != 0:
         users = select_users_id()
         if str(callback.from_user.id) in users:
-            await callback.message.answer_invoice(title='Бронирование столика', description='Бронирование столика', payload='Бронирование столика', provider_token=config.tg_bot.pay_token, currency='RUB', prices=[LabeledPrice(label='Бронирование столика', amount=500*100)])
-            await state.update_data(date=date, table_id=one_table['id'], free_place=one_table['free_place'],
-                                user_id=callback.from_user.id)
+            await callback.message.answer_invoice(title='Бронирование столика в клубе LOFT FAMILY', description=f'Бронирование столика в клубе LOFT FAMILY с дипозитом 5000 на {date}', payload='Бронирование столика', provider_token=config.tg_bot.pay_token, currency='RUB', prices=[LabeledPrice(label='Бронирование столика', amount=500*100)])
+            await state.update_data(date=date, table_id=one_table['id'], free_place=one_table['free_place'], user_id=callback.from_user.id)
             await state.set_state(FSMBooking.verification_pay)
         else:
-            await callback.message.answer(f'ВЫ ВЫБРАЛИ ДАТУ - {date}\n\nВВЕДИТЕ ВАШЕ ИМЯ')
-            await state.update_data(date=date, table_id=one_table['id'], free_place=one_table['free_place'],
-                                user_id=callback.from_user.id)
+            await callback.message.answer(f'Вы выбрали дату - {date}\n\nВведите ваше имя', reply_markup=create_cancel_booking_kb())
+            await state.update_data(date=date, table_id=one_table['id'], free_place=one_table['free_place'], user_id=callback.from_user.id)
             await state.set_state(FSMBooking.fill_first_name)
     else:
         await callback.message.answer(f'На выбранную дату свободных мест не осталось, выберите дргую дату')
@@ -507,7 +636,7 @@ async def process_fill_first_name(message: Message, state: FSMContext):
         # Устанавливаем состояние проверки анкеты
         await state.set_state(FSMBooking.verification_form)
     else:
-        await message.answer(text=f'Введите вашу фамилию', reply_markup=create_cancel_registr_kb())
+        await message.answer(text=f'Введите вашу фамилию', reply_markup=create_cancel_booking_kb())
         # Устанавливаем состояние ожидания ввода фамилии
         await state.set_state(FSMBooking.fill_last_name)
 
@@ -520,7 +649,7 @@ async def process_fill_first_name(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMBooking.fill_first_name))
 async def warning_fill_first_name(message: Message):
     await message.answer(
-        text=f'Имя должно состоять только из букв, введите имя еще раз', reply_markup=create_cancel_registr_kb())
+        text=f'Имя должно состоять только из букв, введите имя еще раз', reply_markup=create_cancel_booking_kb())
 
 
 
@@ -537,7 +666,7 @@ async def process_fill_last_name(message: Message, state: FSMContext):
         # Устанавливаем состояние проверки анкеты
         await state.set_state(FSMBooking.verification_form)
     else:
-        await message.answer(text=f'Введите вашу дату рождения в формате dd.mm.yyyy', reply_markup=create_cancel_registr_kb())
+        await message.answer(text=f'Введите вашу дату рождения в формате dd.mm.yyyy', reply_markup=create_cancel_booking_kb())
         # Устанавливаем состояние ожидания ввода даты рождения
         await state.set_state(FSMBooking.fill_bd)
 
@@ -549,7 +678,7 @@ async def process_fill_last_name(message: Message, state: FSMContext):
 @router.message(StateFilter(FSMBooking.fill_last_name))
 async def warning_fill_last_name(message: Message):
     await message.answer(
-        text=f'Фамилия должна состоять только из букв, введите фамилию еще раз', reply_markup=create_cancel_registr_kb())
+        text=f'Фамилия должна состоять только из букв, введите фамилию еще раз', reply_markup=create_cancel_booking_kb())
 
 
 
@@ -567,11 +696,11 @@ async def process_fill_birthday(message: Message, state: FSMContext):
             # Устанавливаем состояние проверки анкеты
             await state.set_state(FSMBooking.verification_form)
         else:
-            await message.answer(text=f'Введите ваш номер телефона в формате 89997776655', reply_markup=create_cancel_registr_kb())
+            await message.answer(text=f'Введите ваш номер телефона в формате 89997776655', reply_markup=create_cancel_booking_kb())
             # Устанавливаем состояние ожидания ввода номера телефона
             await state.set_state(FSMBooking.fill_phone)
     else:
-        await message.answer(text=f'Дата рождения должна быть в формате dd.mm.yyyy, введите дату рождения еще раз', reply_markup=create_cancel_registr_kb())
+        await message.answer(text=f'Дата рождения должна быть в формате dd.mm.yyyy, введите дату рождения еще раз', reply_markup=create_cancel_booking_kb())
 
 
 
@@ -580,7 +709,7 @@ async def process_fill_birthday(message: Message, state: FSMContext):
 # ввода даты рождения будет введено что-то некорректное
 @router.message(StateFilter(FSMBooking.fill_bd))
 async def warning_fill_birthday(message: Message):
-    await message.answer(text=f'Дата рождения должна быть в формате dd.mm.yyyy, введите дату рождения еще раз', reply_markup=create_cancel_registr_kb())
+    await message.answer(text=f'Дата рождения должна быть в формате dd.mm.yyyy, введите дату рождения еще раз', reply_markup=create_cancel_booking_kb())
 
 
 
@@ -593,11 +722,11 @@ async def process_fill_phone(message: Message, state: FSMContext):
         phone = message.text
         await state.update_data(phone=phone)
         db = await state.get_data()
-        await message.answer(text=f'Имя:{db["first_name"]}\nФамилия:{db["last_name"]}\nДата рождения:{db["birthday"]}\nНомер телефона:{db["phone"]}\n\nВсе данные указаны верно ?', reply_markup=create_yes_no_kb())
+        await message.answer(text=f'Имя: {db["first_name"]}\nФамилия: {db["last_name"]}\nДата рождения: {db["birthday"]}\nНомер телефона: {db["phone"]}\n\nВсе данные указаны верно ?', reply_markup=create_yes_no_kb())
         # Устанавливаем состояние проверки анкеты
         await state.set_state(FSMBooking.verification_form)
     else:
-        await message.answer(text=f'Номер телефона должнен быть в формате 89997776655, введите номер телефона еще раз', reply_markup=create_cancel_registr_kb())
+        await message.answer(text=f'Номер телефона должнен быть в формате 89997776655, введите номер телефона еще раз', reply_markup=create_cancel_booking_kb())
 
 
 
@@ -606,7 +735,7 @@ async def process_fill_phone(message: Message, state: FSMContext):
 # ввода номера телефона будет введено что-то некорректное
 @router.message(StateFilter(FSMBooking.fill_phone))
 async def warning_fill_phone(message: Message):
-    await message.answer(text=f'Номер телефона должнен быть в формате 89997776655, введите номер телефона еще раз', reply_markup=create_cancel_registr_kb())
+    await message.answer(text=f'Номер телефона должнен быть в формате 89997776655, введите номер телефона еще раз', reply_markup=create_cancel_booking_kb())
 
 
 
@@ -618,7 +747,7 @@ async def process_yes_button(callback: CallbackQuery, state: FSMContext):
     # добавляем нового пользователя в базу данных
     db = await state.get_data()
     insert_user(db['user_id'], db['first_name'], db['last_name'], db['birthday'], db['phone'])
-    await callback.message.answer_invoice(title='Бронирование столика', description='Бронирование столика', payload='Бронирование столика', provider_token=config.tg_bot.pay_token, currency='RUB', prices=[LabeledPrice(label='Бронирование столика', amount=500*100)])
+    await callback.message.answer_invoice(title='Бронирование столика в клубе LOFT FAMILY', description=f'Бронирование столика в клубе LOFT FAMILY с дипозитом 5000 на {db["date"]}', payload='Бронирование столика', provider_token=config.tg_bot.pay_token, currency='RUB', prices=[LabeledPrice(label='Бронирование столика', amount=500*100)])
     await state.set_state(FSMBooking.verification_pay)
 
 
@@ -628,7 +757,7 @@ async def process_yes_button(callback: CallbackQuery, state: FSMContext):
 # при регистрации на мероприятие и отправлать список изменений
 @router.callback_query(Text(text='no'), StateFilter(FSMBooking.verification_form))
 async def process_yes_button(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer(f'Выберите раздел, в который хотите внести изменения:\n1 - изменить имя;\n2 - изменить фамилию;\n3 - изменить дату рождения;\n4 - изменить номер телефона;')
+    await callback.message.answer(f'Выберите раздел, в который хотите внести изменения:\n1 - изменить имя;\n2 - изменить фамилию;\n3 - изменить дату рождения;\n4 - изменить номер телефона;', reply_markup=create_cancel_booking_kb())
     await state.set_state(FSMBooking.section_choosing)
 
 
@@ -639,19 +768,19 @@ async def process_yes_button(callback: CallbackQuery, state: FSMContext):
 async def process_fill_phone(message: Message, state: FSMContext):
     db = await state.get_data()
     if int(message.text) == 1:
-        await message.answer(f'Текущее имя: {db["first_name"]}\nВведите новое имя', reply_markup=create_cancel_registr_kb())
+        await message.answer(f'Текущее имя: {db["first_name"]}\nВведите новое имя', reply_markup=create_cancel_booking_kb())
         # Устанавливаем состояние ввода имени
         await state.set_state(FSMBooking.fill_first_name)
     elif int(message.text) == 2:
-        await message.answer(f'Текущая фамилия: {db["last_name"]}\nВведите новую фамилию', reply_markup=create_cancel_registr_kb())
+        await message.answer(f'Текущая фамилия: {db["last_name"]}\nВведите новую фамилию', reply_markup=create_cancel_booking_kb())
         # Устанавливаем состояние ввода фамилии
         await state.set_state(FSMBooking.fill_last_name)
     elif int(message.text) == 3:
-        await message.answer(f'Текущая дата рождения: {db["birthday"]}\nВведите новую дату рождения в фомате dd.mm.yyyy', reply_markup=create_cancel_registr_kb())
+        await message.answer(f'Текущая дата рождения: {db["birthday"]}\nВведите новую дату рождения в фомате dd.mm.yyyy', reply_markup=create_cancel_booking_kb())
         # Устанавливаем состояние ввода даты рождения
         await state.set_state(FSMBooking.fill_bd)
     elif int(message.text) == 4:
-        await message.answer(f'Текущуй номер телефона: {db["phone"]}\nВведите новый номер телефона', reply_markup=create_cancel_registr_kb())
+        await message.answer(f'Текущуй номер телефона: {db["phone"]}\nВведите новый номер телефона', reply_markup=create_cancel_booking_kb())
         # Устанавливаем состояние ввода номера телефона
         await state.set_state(FSMBooking.fill_phone)
 
@@ -662,7 +791,7 @@ async def process_fill_phone(message: Message, state: FSMContext):
 # ввода номера раздела внесения изменений будет введено что-то некорректное
 @router.message(StateFilter(FSMBooking.section_choosing))
 async def warning_fill_phone(message: Message):
-    await message.answer(text=f'Для выбора раздела введите номер от 1 до 4', reply_markup=create_cancel_registr_kb())
+    await message.answer(text=f'Для выбора раздела введите номер от 1 до 4', reply_markup=create_cancel_booking_kb())
 
 
 
@@ -671,7 +800,7 @@ async def warning_fill_phone(message: Message):
 # проверки анкеты будет введено что-то некорректное
 @router.message(StateFilter(FSMBooking.verification_form))
 async def warning_fill_phone(message: Message):
-    await message.answer(text=f'Для продолжения бронирования нажмите на кнопку да/нет')
+    await message.answer(text=f'Для продолжения бронирования нажмите на кнопку да/нет', reply_markup=create_cancel_booking_kb())
 
 
 
@@ -687,17 +816,97 @@ async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
 # этот хэндлер будет срабатывать при успешной оплате
 # и отправлять вам счет на оплату
 @router.message(F.content_type == ContentType.SUCCESSFUL_PAYMENT, StateFilter(FSMBooking.verification_pay))
-async def success(message: Message, state: FSMContext):
+async def success(message: Message, state: FSMContext, bot: Bot):
     db = await state.get_data()
     user = select_one_user(db['user_id'])
     insert_booking_table(user['id'], db['table_id'])
     new_free_place = int(db['free_place']) - 1
     edit_free_place_table(new_free_place, db['table_id'])
-    await message.answer(f'Оплата проведена успешно, вы забронировали столик на {db["date"]}, ждем вас :)')
-    # await message.answer(f'{message.successful_payment.order_info}\n{message.successful_payment.telegram_payment_charge_id}\n{message.successful_payment.provider_payment_charge_id}')
+    await message.answer(f'Оплата проведена успешно👍🏻\n\n<b>{user["first_name"]} {user["last_name"]}</b> вы забронировали столик в клубе LOFT FAMILY на {db["date"]} с дипозитом на сумму 5000, ждем вас, до встречи :)', parse_mode='HTML')
+    for id in config.tg_bot.admin_ids:
+        await bot.send_message(id, f'<b>{user["first_name"]} {user["last_name"]}</b> забронировал(а) столик на {db["date"]}\nНомер телефона: {user["phone"]}', parse_mode='HTML')
     await state.clear()
 
 
+
+
+
+
+
+
+
+
+                                # Функция просмотра бронирований столиков
+
+
+
+
+class FSMShowBooking(StatesGroup):
+    # Создаем экземпляры класса State, последовательно
+    # перечисляя возможные состояния, в которых будет находиться
+    # бот в разные моменты взаимодействия с пользователем
+    date_choosing = State() # Состояние выбора даты
+
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить просмотр"
+# и отменять процесс регистрации на мероприятие
+@router.callback_query(Text(text='cancel_show'), StateFilter(FSMShowBooking))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    text = f"{LEXICON['/start']}"
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Просмотр списка бронирований столиков отменен')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
+
+
+
+# Этот хэндлер будет срабатывать на отправку команды /showbooking
+# и отправлять в чат выбор даты, на которую необходимо посмотреть брони
+@router.message(Command(commands='showbooking'), StateFilter(default_state), IsAdmin(config.tg_bot.admin_ids))
+async def process_showbooking_command(message: Message, state: FSMContext):
+    date_list = date_func()
+    await message.answer('Выбери дату, на которую хочешь посмотреть брони:', reply_markup=create_date_kb_2(date_list))
+    # Устанавливаем состояние ожидания выбора даты
+    await state.set_state(FSMShowBooking.date_choosing)
+
+
+# Этот хэндлер будет срабатывать, если во время
+# выбора мероприятия будет введено что-то некорректное
+@router.message(StateFilter(FSMShowBooking))
+async def warning_show_booking(message: Message):
+    await message.answer(text=f'Чтобы посмотреть список бронирований выберите дату или нажмити кнопку "Отменить просмотр"', reply_markup=create_cancel_show_kb())
+
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки с датой
+# во время выбора пользователя даты записи на тренировку
+@router.callback_query(Text(text=['date_1', 'date_2', 'date_3', 'date_4', 'date_5', 'date_6', 'date_7']),
+                        StateFilter(FSMShowBooking.date_choosing))
+async def process_date_press(callback: CallbackQuery, state: FSMContext):
+    date = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    booking = select_all_booking_table()
+    booking_list = []
+    num = 1
+    for book in booking:
+        user = select_user(book['user_id'])
+        date_table = select_one_date_table(book['table_id'])
+        if date == date_table:
+            booking_list.append(f'{num}) Имя: {user["first_name"]}\nФамилия: {user["last_name"]}\nДата рождения: {user["birthday"]}\nНомер телефона: {user["phone"]}')
+            num += 1
+    if len(booking_list) != 0:
+        all_booking = f'\n\n'.join(booking_list)
+        await callback.message.answer(f'На {date} забронировали столики:\n\n{all_booking}', reply_markup=create_backword_menu_kb())
+        await state.clear()
+    else:
+        await callback.message.answer(f'На {date} столики не бронировали', reply_markup=create_backword_menu_kb())
+        await state.clear()
 
 
 
@@ -714,29 +923,37 @@ class FSMCard(StatesGroup):
     # Создаем экземпляры класса State, последовательно
     # перечисляя возможные состояния, в которых будет находиться
     # бот в разные моменты взаимодействия с пользователем
-    add_card = State()       # Состояние добавления мероприятия
-    # cancel_event = State()       # Состояние отмены мероприятия
-    # show_reserv = State()     # Состояние просмотра брони на мероприятие
-    # edit_event = State()       # Состояние редактирования мероприятия
+    add_card = State()       # Состояние добавления карты
+    # show_card = State()     # Состояние просмотра всех карт
 
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить добавление карты"
+# и отменять процесс бронирования столика
+@router.callback_query(Text(text='cancel_card'), StateFilter(FSMCard))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    text = f"{LEXICON['/start']}"
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Добавление карты отменено')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
 
 
 # Этот хэндлер будет срабатывать на отправку команды /addcard
-# и отправлять в чат правила добавления мероприятия
+# и отправлять в чат правила добавления карты
 @router.message(Command(commands='addcard'), StateFilter(default_state), IsAdmin(config.tg_bot.admin_ids))
 async def process_addcard_command(message: Message, state: FSMContext):
-    await message.answer(text=LEXICON['addcard'])
+    await message.answer(text=LEXICON['addcard'], reply_markup=create_cancel_card_kb())
     await state.set_state(FSMCard.add_card)
 
 
 
-# Этот хэндлер будет срабатывать на команду "/cancel"
-# в состоянии добавления владельца клубной карты
-@router.message(Command(commands='cancel'), StateFilter(FSMCard))
-async def process_cancel_command_state(message: Message, state: FSMContext):
-    await message.answer(text=f'Добавление владельца клубной карты отменено')
-    # Сбрасываем состояние и очищаем данные, полученные внутри состояний
-    await state.clear()
+
 
 
 
@@ -748,33 +965,59 @@ async def process_add_event(message: Message, state: FSMContext):
     if len(add_list) == 5:
         error = 0
         if not add_list[0].isalpha():
-            await message.answer('Имя должно состоять только из букв, исправьте имя')
+            await message.answer('Имя должно состоять только из букв, исправьте имя', reply_markup=create_cancel_card_kb())
             error += 1
         if not add_list[1].isalpha():
-            await message.answer('Фамилия должна состоять только из букв, исправьте фамилию')
+            await message.answer('Фамилия должна состоять только из букв, исправьте фамилию', reply_markup=create_cancel_card_kb())
             error += 1
         if not check_date(add_list[2]):
-            await message.answer(f'Дата введена не в верном формате, введите дату в формате:\ndd.mm.yyyy')
+            await message.answer(f'Дата введена не в верном формате, введите дату в формате:\ndd.mm.yyyy', reply_markup=create_cancel_card_kb())
             error += 1
         if not check_phone(add_list[3]):
-            await message.answer(f'Номер телефона введен не в верном формате, введите номер телефона в формате:\n89997776655')
+            await message.answer(f'Номер телефона введен не в верном формате, введите номер телефона в формате:\n89997776655', reply_markup=create_cancel_card_kb())
             error += 1
         if not add_list[4].isdigit():
-            await message.answer('Номер карты должен быть числом, исправьте номер карты')
+            await message.answer('Номер карты должен быть числом, исправьте номер карты', reply_markup=create_cancel_card_kb())
             error += 1
         cards = select_cards_number()
         if add_list[4] in cards:
-            await message.answer('Пользователь с таким номером карты уже добавлен, исправьте номер карты')
+            await message.answer('Пользователь с таким номером карты уже добавлен, исправьте номер карты', reply_markup=create_cancel_card_kb())
             error += 1
         if error == 0:
             insert_card(add_list[0], add_list[1], add_list[2], add_list[3], add_list[4])
-            await message.answer('Владелец клубной карты добавлен')
+            await message.answer('Владелец клубной карты добавлен', reply_markup=create_backword_menu_kb())
             # Завершаем машину состояний
             await state.clear()
     else:
         await message.answer(f'Введенные данные не корректны\n'
                              f'Скорее всего вы забыли поставить ; в конце одного из разделов или поставили лишний знак ;\n'
-                             f'Сравните еще раз введенные данные с шаблоном и после исправления отправьте их еще раз')
+                             f'Сравните еще раз введенные данные с шаблоном и после исправления отправьте их еще раз', reply_markup=create_cancel_card_kb())
+
+
+
+
+
+
+
+                                 # Функция просмотра владельцев клубных карт
+
+
+
+
+
+# Этот хэндлер будет срабатывать на отправку команды /showcard
+# и отправлять в чат список со всеми владельцами карт
+@router.message(Command(commands='showcard'), StateFilter(default_state), IsAdmin(config.tg_bot.admin_ids))
+async def process_addcard_command(message: Message, state: FSMContext):
+    card_list = []
+    cards = select_all_cards()
+    num = 1
+    for card in cards:
+        card_list.append(f'{num}) Номер клубной карты: {card["card"]}\nИмя: {card["first_name"]}\nФамилия: {card["last_name"]}\nДата рождения: {card["birthday"]}\nНомер телефона: {card["phone"]}')
+        num += 1
+    all_card = f'\n\n'.join(card_list)
+    await message.answer(f'{all_card}', reply_markup=create_backword_menu_kb())
+
 
 
 
@@ -799,11 +1042,28 @@ class FSMNewsletter(StatesGroup):
     verification_newslatter = State() # Состояние подтверждения рассылки
 
 
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить рассылку"
+# и отменять процесс регистрации на мероприятие
+@router.callback_query(Text(text='cancel_newslatter'), StateFilter(FSMNewsletter))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    text = f"{LEXICON['/start']}"
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Рассылка отменена')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
+
+
 # Этот хэндлер будет срабатывать на отправку команды /sendnewsletter
 # и отправлять в чат доступные для рассылки мероприятия
 @router.message(IsAdmin(config.tg_bot.admin_ids), Command(commands='sendnewsletter'), StateFilter(default_state))
 async def process_sendnewsletter_command(message: Message, state: FSMContext):
-    await message.answer('Введите текст рассылки')
+    await message.answer('Введите текст рассылки', reply_markup=create_cancel_newslatter_kb())
     await state.set_state(FSMNewsletter.create_text)
 
 
@@ -814,28 +1074,30 @@ async def process_create_text_newsletter(message: Message, state: FSMContext):
     await state.update_data(text=text)
     db = await state.get_data()
     if 'photo' in db.keys():
-        await message.answer(f'Ниже представлена сформированная рассылка, введите:\n\n1 - чтобы отправить текущий вариант;\n2 - чтобы изменить текст;\n3 - чтобы изменить фото')
+        await message.answer(f'Ниже представлена сформированная рассылка, введите:\n\n1 - чтобы отправить текущий вариант;\n2 - чтобы изменить текст;\n3 - чтобы изменить фото', reply_markup=create_cancel_newslatter_kb())
         await message.answer_photo(photo=db['photo'], caption=db['text'])
         # Устанавливаем состояние ожидания подтверждения сформированной рассылки
         await state.set_state(FSMNewsletter.verification_newslatter)
     else:
-        await message.answer('Добавьте фото рассылки')
+        await message.answer('Добавьте фото рассылки', reply_markup=create_cancel_newslatter_kb())
         # Устанавливаем состояние ожидания добавления фото
         await state.set_state(FSMNewsletter.add_photo)
 
 
 
 # Этот хэндлер отправлять сообщение с готовой рассылкой и правилами подтверждения отправки/изменения
-@router.message(IsAdmin(config.tg_bot.admin_ids), StateFilter(FSMNewsletter.create_text))
+@router.message(IsAdmin(config.tg_bot.admin_ids), StateFilter(FSMNewsletter.add_photo))
 async def process_create_text_newsletter(message: Message, state: FSMContext):
     if message.photo:
-        db = state.get_data()
+        db = await state.get_data()
         photo = message.photo[0].file_id
-        await message.answer(f'Ниже представлена сформированная рассылка, введите:\n\n1 - чтобы отправить текущий вариант;\n2 - чтобы изменить текст;\n3 - чтобы изменить фото')
-        await message.answer_photo(photo, caption=db['text'])
+        await message.answer(f'Ниже представлена сформированная рассылка, введите:\n\n1 - чтобы отправить текущий вариант;\n2 - чтобы изменить текст;\n3 - чтобы изменить фото', reply_markup=create_cancel_newslatter_kb())
+        await message.answer_photo(photo=photo, caption=db['text'])
         await state.update_data(photo=photo)
         # Устанавливаем состояние ожидания подтверждения сформированной рассылки
         await state.set_state(FSMNewsletter.verification_newslatter)
+    else:
+        await message.answer('Добавьте фото рассылки', reply_markup=create_cancel_newslatter_kb())
 
 
 
@@ -851,13 +1113,14 @@ async def process_fill_phone(message: Message, state: FSMContext, bot: Bot):
                 await bot.send_photo(chat_id=id, photo=db['photo'], caption=db['text'])
             except:
                 print(f'Произошла ошибка при отправке рассылки на id - {id}')
-        await message.answer('Рассылка отправлена')
+        await message.answer('Рассылка отправлена', reply_markup=create_backword_menu_kb())
+        await state.clear()
     elif int(message.text) == 2:
-        await message.answer(f'Введите новый текст рассылки')
+        await message.answer(f'Введите новый текст рассылки', reply_markup=create_cancel_newslatter_kb())
         # Устанавливаем состояние ввода текста рассылки
         await state.set_state(FSMNewsletter.create_text)
     elif int(message.text) == 3:
-        await message.answer(f'Отправьте новое фото рассылки')
+        await message.answer(f'Отправьте новое фото рассылки', reply_markup=create_cancel_newslatter_kb())
         # Устанавливаем состояние добавления фото
         await state.set_state(FSMNewsletter.add_photo)
 
@@ -866,4 +1129,4 @@ async def process_fill_phone(message: Message, state: FSMContext, bot: Bot):
 # ввода номера раздела внесения изменений будет введено что-то некорректное
 @router.message(StateFilter(FSMNewsletter.verification_newslatter))
 async def warning_fill_phone(message: Message):
-    await message.answer(text=f'Для выбора раздела введите номер от 1 до 3')
+    await message.answer(text=f'Для выбора раздела введите номер от 1 до 3', reply_markup=create_cancel_newslatter_kb())

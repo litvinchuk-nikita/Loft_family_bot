@@ -8,3 +8,11 @@ class IsAdmin(BaseFilter):
 
     async def __call__(self, message: Message) -> bool:
         return message.from_user.id in self.admin_ids
+
+
+class IsSecurity(BaseFilter):
+    def __init__(self, security_ids: list[int]) -> None:
+        self.security_ids = security_ids
+
+    async def __call__(self, message: Message) -> bool:
+        return message.from_user.id in self.security_ids

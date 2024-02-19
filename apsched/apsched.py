@@ -9,6 +9,12 @@ def now_date():
     return now_date
 
 
+def now_day_month(my_date):
+    my_list = my_date.split('.')
+    new_date = f'{my_list[0]}.{my_list[1]}'
+    return new_date
+
+
 def select_all_events():
     try:
         conn = sqlite3.connect('Loft_family_bot/db.sql')
@@ -76,13 +82,13 @@ async def send_message_cron(bot: Bot):
         if event['date'] == now_date():
             for user in user_list:
                 try:
-                    text = f'Привет, дорогой друг! Напоминаю, что сегодня проводится мероприятие {event["name"]}, чтобы попасть к нам бесплатно, не забудь зарегестрироваться, ждем тебя :)'
+                    text = f'Привет, дорогой друг! Напоминаю, что сегодня проводится мероприятие "{event["name"]}", чтобы попасть к нам бесплатно, не забудь зарегестрироваться, ждем тебя :)'
                     photo = event['photo']
                     await bot.send_photo(chat_id=int(user['user_id']), photo=event['photo'], caption=text)
                 except:
                     print('Произошла ошибка при отправке напоминания')
-                if user['birthday'] == now_date():
+                if now_day_month(user['birthday']) == datetime.now().strftime('%d.%m'):
                     try:
-                        await bot.send_message(int(user['user_id']), text=f'ЗДЕСЬ БУДЕТ ПОЗДРАВЛЕНИЕ С ДНЕМ РОЖДЕНИЯ')
+                        await bot.send_message(int(user['user_id']), text=f'Порой не в силах наши поздравленья\nВ особенные, радостные дни\nРаскрыть всю глубину того значенья,\nкоторое должны нести они.\n\nНо пусть всегда светло Вам будет в жизни\nВ кругу родных, в кругу больших друзей.\nПусть много раз улыбкой счастья брызнет\nТакой же свет таких же добрых дней.\n\nС уважением LOFT FAMILY')
                     except:
                         print('Произошла ошибка при отправке напоминания')

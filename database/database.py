@@ -226,6 +226,34 @@ def select_one_user(user_id):
             print("Соединение с SQLite закрыто")
 
 
+def select_user(id):
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('SELECT user_id, first_name, last_name, birthday, phone FROM users WHERE id="%s"' % (id))
+        print("Данные получены")
+        users = cur.fetchall()
+        cur.close()
+        user_list = []
+        for user in users:
+            user_list.append({'user_id': user[0],
+                              'first_name': user[1],
+                              'last_name': user[2],
+                              'birthday': user[3],
+                              'phone': user[4]})
+        if len(user_list) != 0:
+            return user_list[0]
+        else:
+            return []
+    except sqlite3.Error as error:
+        print("Ошибка при получении данных из sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
+
+
 
                             # функции взаимодействия с БД регистраций на мероприятия (booking)
 
@@ -265,6 +293,31 @@ def select_all_booking():
             user_list.append({'id': user[0],
                               'user_id': user[1],
                               'event_id': user[2]})
+        if len(user_list) != 0:
+            return user_list
+        else:
+            return []
+    except sqlite3.Error as error:
+        print("Ошибка при получении данных из sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
+
+
+
+def select_user_id_booking(event_id):
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('SELECT user_id FROM booking WHERE event_id="%s"' % (event_id))
+        print("Данные получены")
+        users = cur.fetchall()
+        cur.close()
+        user_list = []
+        for user in users:
+            user_list.append(user[0])
         if len(user_list) != 0:
             return user_list
         else:
@@ -386,6 +439,23 @@ def insert_free_table(date, free_place):
             print("Соединение с SQLite закрыто")
 
 
+def delete_free_table(id):
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('DELETE FROM free_table WHERE id="%s";' % (id))
+        conn.commit()
+        print("Данные удалены")
+        cur.close()
+    except sqlite3.Error as error:
+        print("Ошибка при обновлении данных из sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
+
+
 def select_date_table():
     try:
         conn = sqlite3.connect('Loft_family_bot/db.sql')
@@ -452,8 +522,58 @@ def select_one_table(date):
 
 
 
+def select_all_table():
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('SELECT id, date, free_place FROM free_table')
+        print("Данные получены")
+        dates = cur.fetchall()
+        cur.close()
+        date_list = []
+        for date in dates:
+            date_list.append({"id": date[0], "date": date[1], "free_place": date[2]})
+        if len(date_list) != 0:
+            return date_list
+        else:
+            return []
+    except sqlite3.Error as error:
+        print("Ошибка при получении данных из sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
 
-                            # функции взаимодействия с БД владельцев клубных карт (cardss)
+
+
+def select_one_date_table(table_id):
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('SELECT date FROM free_table WHERE id = "%s"' % (table_id))
+        print("Данные получены")
+        dates = cur.fetchall()
+        cur.close()
+        date_list = []
+        for date in dates:
+            date_list.append(date[0])
+        if len(date_list) != 0:
+            return date_list[0]
+        else:
+            return []
+    except sqlite3.Error as error:
+        print("Ошибка при получении данных из sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
+
+
+
+
+                            # функции взаимодействия с БД владельцев клубных карт (cards)
 
 
 
@@ -578,8 +698,17 @@ def select_one_card(card):
 
 
 # for i in range(1, 5):
-#     delete_booking(i)
-# delete_booking_table(2)
+#     delete_free_table(i)
+# delete_booking_table(9)
 # print(f'зарегестрировано на мероприятия: {select_all_booking()}')
 # # print(f'забронировано столиков: {select_all_booking_table()}')
 # print(f'зарегестрировано пользователей: {select_all_users()}')
+# print(select_all_events())
+# delete_user(13)
+# print(select_all_users())
+# print(select_user_id_booking(3))
+# print(select_one_user(11))
+# delete_booking_table(10)
+# print(select_all_booking_table())
+# edit_free_place_table(5, 6)
+# print(select_all_table())
