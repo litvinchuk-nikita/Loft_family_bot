@@ -97,6 +97,14 @@ def create_cancel_addevent_kb() -> InlineKeyboardMarkup:
     return kb_builder.as_markup()
 
 
+def create_cancel_addbooking_kb() -> InlineKeyboardMarkup:
+    cancel_button: InlineKeyboardButton = InlineKeyboardButton(
+        text='Отменить добавление брони', callback_data='cancel_addbooking')
+    kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
+    kb_builder.add(cancel_button)
+    return kb_builder.as_markup()
+
+
 def create_cancel_show_kb() -> InlineKeyboardMarkup:
     cancel_button: InlineKeyboardButton = InlineKeyboardButton(
         text='Отменить просмотр', callback_data='cancel_show')
