@@ -527,6 +527,123 @@ def select_one_card(card):
 
 
 
+
+
+
+
+                            # функции взаимодействия с БД опросов (survey)
+
+
+
+
+def insert_survey(first_name, last_name, phone, question_1, question_2, question_3, question_4, question_5, event_id):
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('INSERT INTO survey (first_name, last_name, phone, question_1, question_2, question_3, question_4, question_5, event_id)'
+                    ' VALUES ("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")'
+                    % (first_name, last_name, phone, question_1, question_2, question_3, question_4, question_5, event_id))
+        print("Данные в таблицу добавлены")
+        conn.commit()
+        cur.close()
+    except sqlite3.Error as error:
+        print("Ошибка при добавлении данных в sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
+
+
+def select_survey(event_id):
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('SELECT first_name, last_name, phone, question_1, question_2, question_3, question_4, question_5 FROM survey WHERE event_id="%s"' % (event_id))
+        print("Данные получены")
+        users = cur.fetchall()
+        cur.close()
+        users_list = []
+        for user in users:
+            users_list.append({'first_name': user[0],
+                              'last_name': user[1],
+                              'phone': user[2],
+                              'question_1': user[3],
+                              'question_2': user[4],
+                              'question_3': user[5],
+                              'question_4': user[6],
+                              'question_5': user[7]})
+        if len(users_list) != 0:
+            return users_list
+        else:
+            return []
+    except sqlite3.Error as error:
+        print("Ошибка при получении данных из sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
+
+
+
+
+
+
+
+
+
+                            # функции взаимодействия с БД id всех кто использовал бота (ids)
+
+
+
+
+def insert_id(user_id):
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('INSERT INTO ids (user_id)'
+                    ' VALUES ("%s")' % (user_id))
+        print("Данные в таблицу добавлены")
+        conn.commit()
+        cur.close()
+    except sqlite3.Error as error:
+        print("Ошибка при добавлении данных в sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
+
+
+def select_id():
+    try:
+        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        cur = conn.cursor()
+        print("База данных подключена к SQLite")
+        cur.execute('SELECT user_id FROM ids')
+        print("Данные получены")
+        users = cur.fetchall()
+        cur.close()
+        users_list = []
+        for user in users:
+            users_list.append(user[0])
+        if len(users_list) != 0:
+            return users_list
+        else:
+            return []
+    except sqlite3.Error as error:
+        print("Ошибка при получении данных из sqlite", error.__class__, error)
+    finally:
+        if (conn):
+            conn.close()
+            print("Соединение с SQLite закрыто")
+
+
+
+
+
+
 # for i in range(1, 5):
 #     delete_free_table(i)
 # delete_booking_table(9)

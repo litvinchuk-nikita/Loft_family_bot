@@ -8,9 +8,10 @@ from aiogram.types import CallbackQuery, Message, URLInputFile, InputMediaPhoto,
 from database.database import (insert_event, select_all_events, select_one_event, delete_event, insert_user, select_all_users,
                                select_users_id, insert_registr, select_all_registr, insert_card, select_all_cards, select_cards_number,
                                delete_card, select_one_card, select_user_id_registr, select_user, select_one_user, insert_booking_table,
-                               select_booking_table)
+                               select_booking_table, select_survey, insert_survey, insert_id, select_id)
 from keyboards.other_kb import (create_menu_kb, create_date_kb, create_date_kb_2, create_backword_menu_kb, create_yes_no_kb, create_cancel_registr_kb,
-                                create_cancel_addevent_kb, create_cancel_show_kb, create_cancel_booking_kb, create_cancel_card_kb, create_cancel_newslatter_kb)
+                                create_cancel_addevent_kb, create_cancel_show_kb, create_cancel_booking_kb, create_cancel_card_kb, create_cancel_newslatter_kb,
+                                create_question_kb, create_question_2_kb, create_question_3_kb)
 from lexicon.lexicon import LEXICON
 from filters.filters import IsAdmin, IsSecurity
 from services.file_handling import date_func, check_date, check_phone, now_time
@@ -27,6 +28,9 @@ config: Config = load_config()
 # и отправлять ему стартовое меню
 @router.message(CommandStart(), StateFilter(default_state))
 async def process_start_cammand(message: Message, bot: Bot):
+    ids_list = select_id()
+    if str(message.from_user.id) not in ids_list:
+        insert_id(message.from_user.id)
     text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await message.answer_photo(
@@ -499,9 +503,27 @@ async def process_showregistr_command(message: Message, state: FSMContext):
             if len(events_list) == 0:
                 await message.answer("К сожалению на данный момент нету запланированных мероприятий, попробуйте проверить позже.")
             else:
-                events = f'\n\n'.join(events_list)
-                text = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
-                await message.answer(text=text, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
+                if len(events_list) <= 20:
+                    events = f'\n\n'.join(events_list)
+                    text = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+                    await message.answer(text=text, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
+                elif len(events_list) >= 21 and len(events_list) <= 40:
+                    events_1 = f'\n\n'.join(events_list[0:20])
+                    events_2 = f'\n\n'.join(events_list[20:])
+                    text_1 = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events_1}"
+                    text_2 = f"{events_2}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+                    await message.answer(text=text_1,parse_mode='HTML')
+                    await message.answer(text=text_2, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
+                elif len(events_list) >= 41 and len(events_list) <= 60:
+                    events_1 = f'\n\n'.join(events_list[0:20])
+                    events_2 = f'\n\n'.join(events_list[20:40])
+                    events_3 = f'\n\n'.join(events_list[40:])
+                    text_1 = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events_1}"
+                    text_2 = f"{events_2}"
+                    text_3 = f"{events_3}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+                    await message.answer(text=text_1, parse_mode='HTML')
+                    await message.answer(text=text_2, parse_mode='HTML')
+                    await message.answer(text=text_3, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
                 # Устанавливаем состояние ожидания выбора мероприятия
                 await state.set_state(FSMShowRegistr.event_choosing)
                 await state.update_data(id_list=id_list)
@@ -529,9 +551,34 @@ async def process_event_choosing(message: Message, state: FSMContext):
                 user_list.append(f'{num}) <b>Имя</b>: {user["first_name"]}\n<b>Фамилия</b>: {user["last_name"]}')
             num += 1
         if len(user_list) != 0:
-            all_user = f'\n\n'.join(user_list)
-            await message.answer(f'На {event["name"]} зарегестрировались:\n\n{all_user}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
-            await state.clear()
+            if len(user_list) <= 30:
+                all_user = f'\n\n'.join(user_list)
+                await message.answer(f'На {event["name"]} зарегестрировались:\n\n{all_user}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+                await state.clear()
+            elif len(user_list) >= 31 and len(user_list) <= 60:
+                all_user_1 = f'\n\n'.join(user_list[0:30])
+                all_user_2 = f'\n\n'.join(user_list[30:])
+                await message.answer(f'На {event["name"]} зарегестрировались:\n\n{all_user_1}', parse_mode='HTML')
+                await message.answer(f'{all_user_2}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+                await state.clear()
+            elif len(user_list) >= 61 and len(user_list) <= 90:
+                all_user_1 = f'\n\n'.join(user_list[0:30])
+                all_user_2 = f'\n\n'.join(user_list[30:60])
+                all_user_3 = f'\n\n'.join(user_list[60:])
+                await message.answer(f'На {event["name"]} зарегестрировались:\n\n{all_user_1}', parse_mode='HTML')
+                await message.answer(f'{all_user_2}', parse_mode='HTML')
+                await message.answer(f'{all_user_3}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+                await state.clear()
+            elif len(user_list) >= 91 and len(user_list) <= 120:
+                all_user_1 = f'\n\n'.join(user_list[0:30])
+                all_user_2 = f'\n\n'.join(user_list[30:60])
+                all_user_3 = f'\n\n'.join(user_list[60:90])
+                all_user_4 = f'\n\n'.join(user_list[90:])
+                await message.answer(f'На {event["name"]} зарегестрировались:\n\n{all_user_1}', parse_mode='HTML')
+                await message.answer(f'{all_user_2}', parse_mode='HTML')
+                await message.answer(f'{all_user_3}', parse_mode='HTML')
+                await message.answer(f'{all_user_4}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+                await state.clear()
         else:
             await message.answer(f'На {event["name"]} пока никого не зарегестрировалось', reply_markup=create_backword_menu_kb())
             await state.clear()
@@ -1066,8 +1113,55 @@ async def process_addcard_command(message: Message, state: FSMContext):
     for card in cards:
         card_list.append(f'{num}) Номер клубной карты: {card["card"]}\nИмя: {card["first_name"]}\nФамилия: {card["last_name"]}\nДата рождения: {card["birthday"]}\nНомер телефона: {card["phone"]}')
         num += 1
-    all_card = f'\n\n'.join(card_list)
-    await message.answer(f'{all_card}', reply_markup=create_backword_menu_kb())
+    if len(card_list) <= 30:
+        all_card = f'\n\n'.join(card_list)
+        await message.answer(f'{all_card}', reply_markup=create_backword_menu_kb())
+    elif len(card_list) >= 31 and len(card_list) <= 60:
+        all_card_1 = f'\n\n'.join(card_list[0:30])
+        all_card_2 = f'\n\n'.join(card_list[30:])
+        await message.answer(f'{all_card_1}')
+        await message.answer(f'{all_card_2}', reply_markup=create_backword_menu_kb())
+    elif len(card_list) >= 61 and len(card_list) <= 90:
+        all_card_1 = f'\n\n'.join(card_list[0:30])
+        all_card_2 = f'\n\n'.join(card_list[30:60])
+        all_card_3 = f'\n\n'.join(card_list[60:])
+        await message.answer(f'{all_card_1}')
+        await message.answer(f'{all_card_2}')
+        await message.answer(f'{all_card_3}', reply_markup=create_backword_menu_kb())
+    elif len(card_list) >= 91 and len(card_list) <= 120:
+        all_card_1 = f'\n\n'.join(card_list[0:30])
+        all_card_2 = f'\n\n'.join(card_list[30:60])
+        all_card_3 = f'\n\n'.join(card_list[60:90])
+        all_card_4 = f'\n\n'.join(card_list[90:])
+        await message.answer(f'{all_card_1}')
+        await message.answer(f'{all_card_2}')
+        await message.answer(f'{all_card_3}')
+        await message.answer(f'{all_card_4}', reply_markup=create_backword_menu_kb())
+    elif len(card_list) >= 121 and len(card_list) <= 150:
+        all_card_1 = f'\n\n'.join(card_list[0:30])
+        all_card_2 = f'\n\n'.join(card_list[30:60])
+        all_card_3 = f'\n\n'.join(card_list[60:90])
+        all_card_4 = f'\n\n'.join(card_list[90:120])
+        all_card_5 = f'\n\n'.join(card_list[120:])
+        await message.answer(f'{all_card_1}')
+        await message.answer(f'{all_card_2}')
+        await message.answer(f'{all_card_3}')
+        await message.answer(f'{all_card_4}')
+        await message.answer(f'{all_card_5}', reply_markup=create_backword_menu_kb())
+    elif len(card_list) >= 151 and len(card_list) <= 180:
+        all_card_1 = f'\n\n'.join(card_list[0:30])
+        all_card_2 = f'\n\n'.join(card_list[30:60])
+        all_card_3 = f'\n\n'.join(card_list[60:90])
+        all_card_4 = f'\n\n'.join(card_list[90:120])
+        all_card_5 = f'\n\n'.join(card_list[120:150])
+        all_card_6 = f'\n\n'.join(card_list[150:])
+        await message.answer(f'{all_card_1}')
+        await message.answer(f'{all_card_2}')
+        await message.answer(f'{all_card_3}')
+        await message.answer(f'{all_card_4}')
+        await message.answer(f'{all_card_5}')
+        await message.answer(f'{all_card_6}', reply_markup=create_backword_menu_kb())
+
 
 
 
@@ -1181,3 +1275,238 @@ async def process_fill_phone(message: Message, state: FSMContext, bot: Bot):
 @router.message(StateFilter(FSMNewsletter.verification_newslatter))
 async def warning_fill_phone(message: Message):
     await message.answer(text=f'Для выбора раздела введите номер от 1 до 3', reply_markup=create_cancel_newslatter_kb())
+
+
+
+
+
+                                 # Функция опроса пользователей после мероприятия
+
+
+
+
+
+class FSMSurvey(StatesGroup):
+    # Создаем экземпляры класса State, последовательно
+    # перечисляя возможные состояния, в которых будет находиться
+    # бот в разные моменты взаимодействия с пользователем
+    question_1 = State()    # Состояние ожидания ответа на первый вопрос
+    question_2 = State()    # Состояние ожидания ответа на второй вопрос
+    question_3 = State()    # Состояние ожидания ответа на третий вопрос
+    question_4 = State()    # Состояние ожидания ответа на четвертый вопрос
+    question_5 = State()    # Состояние ожидания ответа на пятый вопрос
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить рассылку"
+# и отменять процесс регистрации на мероприятие
+@router.callback_query(Text(text='cancel_survey'), StateFilter(FSMSurvey))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    text = f"{LEXICON['/start']}"
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Опрос отмененен')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
+
+
+# Этот хэндлер будет срабатывать, если во время
+# ввода номера раздела внесения изменений будет введено что-то некорректное
+@router.message(StateFilter(FSMSurvey))
+async def warning_survey(message: Message):
+    await message.answer(text=f'Вы находитесь в режиме опроса, чтобы использовать другие возможности бота пройдите опрос или отмените его')
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки с оценкой
+# во время ответа на первый вопрос
+@router.callback_query(Text(text=['1', '2', '3', '4', '5']), StateFilter(FSMSurvey.question_1))
+async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
+    question_1 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    await state.update_data(question_1=question_1, user_id=callback.from_user.id)
+    await message.answer(f'Оцените качество алкоголя:', reply_markup=create_question_kb())
+    await state.set_state(FSMSurvey.question_2)
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки с оценкой
+# во время ответа на второй вопрос
+@router.callback_query(Text(text=['1', '2', '3', '4', '5', '6']), StateFilter(FSMSurvey.question_2))
+async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
+    question_2 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    await state.update_data(question_2=question_2)
+    await message.answer(f'Оцените качество кальяна:', reply_markup=create_question_kb())
+    await state.set_state(FSMSurvey.question_3)
+
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки с оценкой
+# во время ответа на третий вопрос
+@router.callback_query(Text(text=['1', '2', '3', '4', '5', '6']), StateFilter(FSMSurvey.question_3))
+async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
+    question_3 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    await state.update_data(question_3=question_3)
+    await message.answer(f'Оцените качество обслуживания персонала:', reply_markup=create_question_kb())
+    await state.set_state(FSMSurvey.question_4)
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки с оценкой
+# во время ответа на четвертый вопрос
+@router.callback_query(Text(text=['1', '2', '3', '4', '5']), StateFilter(FSMSurvey.question_4))
+async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
+    question_4 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    await state.update_data(question_4=question_4)
+    await message.answer(f'Оцените качество работы охраны:', reply_markup=create_question_kb())
+    await state.set_state(FSMSurvey.question_5)
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки с оценкой
+# во время ответа на пятый вопрос
+@router.callback_query(Text(text=['1', '2', '3', '4', '5']), StateFilter(FSMSurvey.question_5))
+async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
+    question_5 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    db = await state.get_data()
+    user = select_one_user(db['user_id'])
+    insert_survey(user['first_name'], user['last_name'], user['phone'], db['question_1'], db['question_2'], db['question_3'], db['question_4'], question_5, db['event_id'])
+    await message.answer(f'Спасибо за прохождение опроса, с помощью вас мы становимся лучше :)')
+    await state.clear()
+
+
+
+
+
+
+                                # ФУНКЦИЯ ПРОСМОТРА ОПРОСА
+
+
+
+
+
+
+
+
+
+class FSMShowSurvey(StatesGroup):
+    # Создаем экземпляры класса State, последовательно
+    # перечисляя возможные состояния, в которых будет находиться
+    # бот в разные моменты взаимодействия с пользователем
+    event_choosing = State() # Состояние выбора мероприятия
+
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить просмотр"
+# и отменять процесс регистрации на мероприятие
+@router.callback_query(Text(text='cancel_show'), StateFilter(FSMShowSurvey))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    text = f"{LEXICON['/start']}"
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Просмотр опроса отменен')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=text,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
+
+
+
+# этот хэндлер будет срабатывать на команду /showsurvey
+# и отправлять пользователю сообщение с выбором мероприятия
+@router.message(Command(commands='showsurvey'), StateFilter(default_state), IsAdmin(config.tg_bot.admin_ids))
+async def process_showsurvey_command(message: Message, state: FSMContext):
+    events_list = []
+    id_list = []
+    num = 1
+    events = select_all_events()
+    if len(events) != 0:
+        for event in events:
+            try:
+                events_list.append(f'{num}) "{event["name"]}"\n{event["description"]}\n'
+                            f'Дата: {event["date"]}\n'
+                            f'<b>КОД МЕРОПРИЯТИЯ 👉🏻 {event["id"]}</b>')
+                id_list.append(event["id"])
+            except:
+                print(f"При проверке мероприятия произошла ошибка: {Exception.__class__}")
+            num += 1
+        if len(events_list) == 0:
+            await message.answer("К сожалению на данный момент нету запланированных мероприятий, попробуйте проверить позже.")
+        else:
+            if len(events_list) <= 20:
+                events = f'\n\n'.join(events_list)
+                text = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+                await message.answer(text=text, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
+            elif len(events_list) >= 21 and len(events_list) <= 40:
+                events_1 = f'\n\n'.join(events_list[0:20])
+                events_2 = f'\n\n'.join(events_list[20:])
+                text_1 = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events_1}"
+                text_2 = f"{events_2}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+                await message.answer(text=text_1,parse_mode='HTML')
+                await message.answer(text=text_2, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
+            elif len(events_list) >= 41 and len(events_list) <= 60:
+                events_1 = f'\n\n'.join(events_list[0:20])
+                events_2 = f'\n\n'.join(events_list[20:40])
+                events_3 = f'\n\n'.join(events_list[40:])
+                text_1 = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events_1}"
+                text_2 = f"{events_2}"
+                text_3 = f"{events_3}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+                await message.answer(text=text_1, parse_mode='HTML')
+                await message.answer(text=text_2, parse_mode='HTML')
+                await message.answer(text=text_3, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
+            # Устанавливаем состояние ожидания выбора мероприятия
+            await state.set_state(FSMShowRegistr.event_choosing)
+            await state.update_data(id_list=id_list)
+    else:
+        await message.answer("К сожалению на данный момент запланированных мероприятий нет, попробуйте проверить позже.")
+
+
+# Этот хэндлер будет срабатывать, если введен корректный номер мероприятия
+@router.message(StateFilter(FSMShowSurvey.event_choosing), lambda x: x.text.isdigit())
+async def process_event_choosing(message: Message, state: FSMContext):
+    db = await state.get_data()
+    id_list = db['id_list']
+    survey_list = []
+    if int(message.text) in id_list:
+        event = select_one_event(int(message.text))
+        survey_all = select_survey(int(message.text))
+        num = 1
+        for survey in survey_all:
+            survey_list.append(f'{num}) <b>Имя</b>: {user["first_name"]}\n<b>Фамилия</b>: {user["last_name"]}\n<b>Дата рождения</b>: {user["birthday"]}\n<b>Номер телефона</b>: {user["phone"]}')
+            num += 1
+        if len(survey_list) != 0:
+            if len(survey_list) <= 20:
+                final_list = f'\n\n'.join(user_list)
+                await message.answer(f'На {event["name"]} прошли опрос:\n\n{final_list}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+                await state.clear()
+            elif len(survey_list) >= 20 and len(survey_list) <= 40:
+                final_list_1 = f'\n\n'.join(user_list[0:20])
+                final_list_2 = f'\n\n'.join(user_list[20:])
+                await message.answer(f'На {event["name"]} прошли опрос:\n\n{final_list_1}', parse_mode='HTML')
+                await message.answer(f'{final_list_2}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+                await state.clear()
+            elif len(survey_list) >= 40 and len(survey_list) <= 60:
+                final_list_1 = f'\n\n'.join(user_list[0:20])
+                final_list_2 = f'\n\n'.join(user_list[20:40])
+                final_list_3 = f'\n\n'.join(user_list[40:])
+                await message.answer(f'На {event["name"]} прошли опрос:\n\n{final_list_1}', parse_mode='HTML')
+                await message.answer(f'{final_list_2}', parse_mode='HTML')
+                await message.answer(f'{final_list_3}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+                await state.clear()
+            elif len(survey_list) >= 60 and len(survey_list) <= 80:
+                final_list_1 = f'\n\n'.join(user_list[0:20])
+                final_list_2 = f'\n\n'.join(user_list[20:40])
+                final_list_3 = f'\n\n'.join(user_list[40:60])
+                final_list_4 = f'\n\n'.join(user_list[60:])
+                await message.answer(f'На {event["name"]} прошли опрос:\n\n{final_list_1}', parse_mode='HTML')
+                await message.answer(f'{final_list_2}', parse_mode='HTML')
+                await message.answer(f'{final_list_3}', parse_mode='HTML')
+                await message.answer(f'{final_list_4}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
+                await state.clear()
+        else:
+            await message.answer(f'На {event["name"]} пока не проходили опрос', reply_markup=create_backword_menu_kb())
+            await state.clear()
+    else:
+        await message.answer(text=f'Введен не верный код мероприятия, попробуйте еще раз', reply_markup=create_cancel_show_kb())

@@ -62,7 +62,7 @@ LEXICON: dict[str, str] = {
            f'23.10.2023;\n'
            f'7\n',
     'other': f'Не понимаю вас..\nДля ознакомления с возможностями бота введите команду /help',
-    'menu_photo': 'https://sun9-7.userapi.com/impg/NuJzFxpI9jZ_inuTcjCvWyR5tOLGdoN5NyGYHA/2jus9-WEJw4.jpg?size=2560x2560&quality=95&sign=de18a9cdc017ce8afdb59b1ef15c62dc&type=album'}
+    'menu_photo': 'https://sun9-79.userapi.com/impg/oi22l8zxsCZem0qTXe_V10Fw161ESV8wMAiIWw/kXyHQxLvGzA.jpg?size=1280x1280&quality=95&sign=3f97e62a518389b55f8f23c2ef5687ed&type=album'}
 
 LEXICON_COMMANDS: dict[str, str] = {
     '/start': 'Запустить бота/открыть меню',
