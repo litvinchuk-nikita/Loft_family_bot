@@ -8,10 +8,10 @@ from aiogram.types import CallbackQuery, Message, URLInputFile, InputMediaPhoto,
 from database.database import (insert_event, select_all_events, select_one_event, delete_event, insert_user, select_all_users,
                                select_users_id, insert_registr, select_all_registr, insert_card, select_all_cards, select_cards_number,
                                delete_card, select_one_card, select_user_id_registr, select_user, select_one_user, insert_booking_table,
-                               select_booking_table, select_survey, insert_survey, insert_id, select_id)
+                               select_booking_table, select_survey, insert_survey, insert_id, select_id, select_all_ids, select_one_event_id)
 from keyboards.other_kb import (create_menu_kb, create_date_kb, create_date_kb_2, create_backword_menu_kb, create_yes_no_kb, create_cancel_registr_kb,
                                 create_cancel_addevent_kb, create_cancel_show_kb, create_cancel_booking_kb, create_cancel_card_kb, create_cancel_newslatter_kb,
-                                create_question_kb, create_question_2_kb, create_question_3_kb)
+                                create_question_kb, create_question_2_kb, create_question_3_kb, create_cancel_addbooking_kb)
 from lexicon.lexicon import LEXICON
 from filters.filters import IsAdmin, IsSecurity
 from services.file_handling import date_func, check_date, check_phone, now_time
@@ -31,11 +31,9 @@ async def process_start_cammand(message: Message, bot: Bot):
     ids_list = select_id()
     if str(message.from_user.id) not in ids_list:
         insert_id(message.from_user.id)
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
 
@@ -56,12 +54,10 @@ async def process_help_command(message: Message):
 # и возвращать пользователя в стартовое меню
 @router.callback_query(Text(text='backword_menu'), StateFilter(default_state))
 async def process_backward_press(callback: CallbackQuery):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
 
@@ -285,6 +281,7 @@ async def process_yes_button(callback: CallbackQuery, state: FSMContext):
     # добавляем бронирование в базу данных
     insert_registr(user['id'], db['event_id'])
     event = select_one_event(db['event_id'])
+    await callback.message.delete()
     await callback.message.answer_photo(photo=event['photo'], caption=f'<b>{user["first_name"]} {user["last_name"]}</b>, вы зарегестрировались на мероприятие: <b>"{event["name"]}"</b>\nДата проведения: <b>{event["date"]}</b>\n\nПокажите это сообщение на входе, чтобы пройти, до встречи :)', parse_mode='HTML')
     # Завершаем машину состояний
     await state.clear()
@@ -294,6 +291,7 @@ async def process_yes_button(callback: CallbackQuery, state: FSMContext):
 # при регистрации на мероприятие и отправлать список изменений
 @router.callback_query(Text(text='no'), StateFilter(FSMFillForm.verification_form))
 async def process_yes_button(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await callback.message.answer(f'Выберите раздел, в который хотите внести изменения:\n1 - изменить имя;\n2 - изменить фамилию;\n3 - изменить дату рождения;\n4 - изменить номер телефона;', reply_markup=create_cancel_registr_kb())
     await state.set_state(FSMFillForm.section_choosing)
 
@@ -331,20 +329,18 @@ async def warning_fill_phone(message: Message):
 # проверки анкеты будет введено что-то некорректное
 @router.message(StateFilter(FSMFillForm.verification_form))
 async def warning_fill_phone(message: Message):
-    await message.answer(text=f'Для продолжения регистрации нажмите на кнопку да/нет')
+    await message.answer(text=f'Для продолжения регистрации нажмите на кнопку да/нет', reply_markup=create_cancel_registr_kb())
 
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить регистрацию"
 # и отменять процесс регистрации на мероприятие
 @router.callback_query(Text(text='cancel_registr'), StateFilter(FSMFillForm))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Регистрация на мероприятие отменена')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -397,7 +393,7 @@ async def process_add_event(message: Message, state: FSMContext):
             await message.answer('Нахождение ковычек в описании мероприятия не допустимо, исправьте описание', reply_markup=create_cancel_addevent_kb())
             error += 1
         if error == 0:
-            await message.answer(f'Отправьте картинку c афишей в ответ на это сообщение\n', reply_markup=create_cancel_addevent_kb())
+            await message.answer(f'Добавьте афишу мероприятия\n', reply_markup=create_cancel_addevent_kb())
             await state.update_data(add_list=add_list)
             # Устанавливаем состояние ожидания добаления афиши
             await state.set_state(FSMAdmin.add_photo_event)
@@ -428,13 +424,11 @@ async def process_add_event(message: Message, state: FSMContext):
 # и отменять процесс регистрации на мероприятие
 @router.callback_query(Text(text='cancel_addevent'), StateFilter(FSMAdmin))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Добавление мероприятия отменено')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -467,13 +461,11 @@ class FSMShowRegistr(StatesGroup):
 # и отменять процесс регистрации на мероприятие
 @router.callback_query(Text(text='cancel_show'), StateFilter(FSMShowRegistr))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Просмотр списка регистраций на мероприятие отменен')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -586,6 +578,12 @@ async def process_event_choosing(message: Message, state: FSMContext):
         await message.answer(text=f'Введен не верный код мероприятия, попробуйте еще раз', reply_markup=create_cancel_show_kb())
 
 
+# Этот хэндлер будет срабатывать, если во время
+# проверки анкеты будет введено что-то некорректное
+@router.message(StateFilter(FSMShowRegistr))
+async def warning_show_registr(message: Message):
+    await message.answer(text=f'Введен не верный код мероприятия, попробуйте еще раз', reply_markup=create_cancel_show_kb())
+
 
 
 
@@ -617,13 +615,11 @@ class FSMBooking(StatesGroup):
 # и отменять процесс бронирования столика
 @router.callback_query(Text(text='cancel_booking'), StateFilter(FSMBooking))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Бронирование отменено')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -650,24 +646,33 @@ async def process_booking_press(callback: CallbackQuery, state: FSMContext):
 async def process_date_press(callback: CallbackQuery, state: FSMContext):
     date = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
     await state.update_data(date=date, user_id=callback.from_user.id)
-    await message.answer(f'На какое количетсво гостей хотите забронировать столик ?', parse_mode='HTML')
+    await callback.message.delete()
+    await callback.message.answer(f'На какое количетсво гостей хотите забронировать столик ?', reply_markup=create_cancel_booking_kb(), parse_mode='HTML')
     await state.set_state(FSMBooking.fill_guest)
+
+
+# Этот хэндлер будет срабатывать, если во время
+# проверки анкеты будет введено что-то некорректное
+@router.message(StateFilter(FSMBooking.date_choosing))
+async def warning_date_choosing(message: Message):
+    await message.answer(text=f'Выберите дату для продолжения бронирования столика или нажмите кнопку отменить', reply_markup=create_cancel_booking_kb())
 
 
 
 # Этот хэндлер будет срабатывать, если введен корректный номер мероприятия
 @router.message(StateFilter(FSMBooking.fill_guest), lambda x: x.text.isdigit())
-async def process_fill_guest(message: Message, state: FSMContext):
+async def process_fill_guest(message: Message, state: FSMContext, bot: Bot):
     guest = message.text
     users = select_users_id()
-    if str(callback.from_user.id) in users:
-        user = select_one_user(callback.from_user.id)
+    db = await state.get_data()
+    if str(message.from_user.id) in users:
+        user = select_one_user(message.from_user.id)
         await message.answer(f'Заявка на бронирование столика отправлена администратору, после проверки наличия свободных мест мы свяжемся с вами🙂', parse_mode='HTML')
         for id in config.tg_bot.admin_ids:
             await bot.send_message(id, f'<b>{user["first_name"]} {user["last_name"]}</b> оставил(а) заявку на бронирование столика {db["date"]} на {guest} гостей\nНомер телефона: {user["phone"]}\nУникальный код пользователя: {user["id"]}', parse_mode='HTML')
         await state.clear()
     else:
-        await callback.message.answer(f'Вы выбрали дату - {date}\n\nВведите ваше имя', reply_markup=create_cancel_booking_kb())
+        await message.answer(f'Вы выбрали дату - {db["date"]}\n\nВведите ваше имя', reply_markup=create_cancel_booking_kb())
         await state.update_data(guest=guest)
         await state.set_state(FSMBooking.fill_first_name)
 
@@ -801,12 +806,13 @@ async def warning_fill_phone(message: Message):
 # этот хэндлер будет срабатывать на нажатие кнопки "да" во время проверки заполнения анкеты
 # при бронировании столика и отправлать пользователю сообщение с оплатой
 @router.callback_query(Text(text='yes'), StateFilter(FSMBooking.verification_form))
-async def process_yes_button(callback: CallbackQuery, state: FSMContext):
+async def process_yes_button(callback: CallbackQuery, state: FSMContext, bot: Bot):
     # добавляем нового пользователя в базу данных
     db = await state.get_data()
     insert_user(db['user_id'], db['first_name'], db['last_name'], db['birthday'], db['phone'])
     user = select_one_user(db['user_id'])
-    await message.answer(f'Заявка на бронирование столика отправлена администратору, после проверки наличия свободных мест мы свяжемся с вами🙂', parse_mode='HTML')
+    await callback.message.delete()
+    await callback.message.answer(f'Заявка на бронирование столика отправлена администратору, после проверки наличия свободных мест мы свяжемся с вами🙂', parse_mode='HTML')
     for id in config.tg_bot.admin_ids:
         await bot.send_message(id, f'<b>{user["first_name"]} {user["last_name"]}</b> оставил(а) заявку на бронирование столика {db["date"]} на {db["guest"]} гостей\nНомер телефона: {user["phone"]}\nУникальный код пользователя: {user["id"]}', parse_mode='HTML')
     await state.clear()
@@ -817,6 +823,7 @@ async def process_yes_button(callback: CallbackQuery, state: FSMContext):
 # при регистрации на мероприятие и отправлать список изменений
 @router.callback_query(Text(text='no'), StateFilter(FSMBooking.verification_form))
 async def process_yes_button(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await callback.message.answer(f'Выберите раздел, в который хотите внести изменения:\n1 - изменить имя;\n2 - изменить фамилию;\n3 - изменить дату рождения;\n4 - изменить номер телефона;', reply_markup=create_cancel_booking_kb())
     await state.set_state(FSMBooking.section_choosing)
 
@@ -890,7 +897,7 @@ async def process_addevent_command(message: Message, state: FSMContext):
 
 # Этот хэндлер будет проверять правильность введенных данных
 # и отправлять сообщение о добавлении фото
-@router.message(IsAdmin(config.tg_bot.admin_ids), StateFilter(FSMAdmin.add_event))
+@router.message(IsAdmin(config.tg_bot.admin_ids), StateFilter(FSMBookingTable.add_booking))
 async def process_add_event(message: Message, state: FSMContext):
     add_list = [i.strip() for i in message.text.split(';')]
     if len(add_list) == 3:
@@ -901,8 +908,8 @@ async def process_add_event(message: Message, state: FSMContext):
         if not check_date(add_list[1]):
             await message.answer(f'Дата введена не в верном формате, введите дату в формате:\ndd.mm.yyyy', reply_markup=create_cancel_addbooking_kb())
             error += 1
-        user_id = select_users_id()
-        if add_list[2] not in user_id:
+        user_id = select_all_ids()
+        if int(add_list[2]) not in user_id:
             await message.answer('Уникальный код пользователя указан не верно', reply_markup=create_cancel_addbooking_kb())
             error += 1
         if error == 0:
@@ -918,18 +925,22 @@ async def process_add_event(message: Message, state: FSMContext):
                              reply_markup=create_cancel_addbooking_kb())
 
 
+# Этот хэндлер будет срабатывать, если во время
+# ввода номера раздела внесения изменений будет введено что-то некорректное
+@router.message(StateFilter(FSMBookingTable.add_booking))
+async def warning_addbooking(message: Message):
+    await message.answer(text=f'Для добавления бронирования введите данные согласно шаблону', reply_markup=create_cancel_addbooking_kb())
+
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить добавление бронирования"
 # и отменять процесс регистрации на мероприятие
 @router.callback_query(Text(text='cancel_addbooking'), StateFilter(FSMBookingTable))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Добавление бронирования отменено')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -956,13 +967,11 @@ class FSMShowBooking(StatesGroup):
 # и отменять процесс регистрации на мероприятие
 @router.callback_query(Text(text='cancel_show'), StateFilter(FSMShowBooking))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Просмотр списка бронирований столиков отменен')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -996,6 +1005,7 @@ async def process_date_press(callback: CallbackQuery, state: FSMContext):
     date = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
     booking_table_list = []
     all_booking_table = select_booking_table(date)
+    num = 1
     if len(all_booking_table) != 0:
         for book in all_booking_table:
             booking_table_list.append(f'{num}) Имя: {book["first_name"]}\nФамилия: {book["last_name"]}\nКоличество гостей: {book["guest"]}\nНомер телефона: {book["phone"]}')
@@ -1029,13 +1039,11 @@ class FSMCard(StatesGroup):
 # и отменять процесс бронирования столика
 @router.callback_query(Text(text='cancel_card'), StateFilter(FSMCard))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Добавление карты отменено')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -1191,13 +1199,11 @@ class FSMNewsletter(StatesGroup):
 # и отменять процесс регистрации на мероприятие
 @router.callback_query(Text(text='cancel_newslatter'), StateFilter(FSMNewsletter))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Рассылка отменена')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -1299,15 +1305,13 @@ class FSMSurvey(StatesGroup):
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить рассылку"
 # и отменять процесс регистрации на мероприятие
-@router.callback_query(Text(text='cancel_survey'), StateFilter(FSMSurvey))
+@router.callback_query(Text(text='cancel_survey'), StateFilter(FSMSurvey, default_state))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Опрос отмененен')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -1323,11 +1327,13 @@ async def warning_survey(message: Message):
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки с оценкой
 # во время ответа на первый вопрос
-@router.callback_query(Text(text=['1', '2', '3', '4', '5']), StateFilter(FSMSurvey.question_1))
+@router.callback_query(Text(text=['1', '2', '3', '4', '5']), StateFilter(default_state))
 async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
-    question_1 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
-    await state.update_data(question_1=question_1, user_id=callback.from_user.id)
-    await message.answer(f'Оцените качество алкоголя:', reply_markup=create_question_kb())
+    question_1 = callback.data
+    event_name = callback.message.text.split('"')
+    await state.update_data(question_1=question_1, user_id=callback.from_user.id, event_name=event_name[1])
+    await callback.message.delete()
+    await callback.message.answer(f'Оцените качество алкоголя:', reply_markup=create_question_2_kb())
     await state.set_state(FSMSurvey.question_2)
 
 
@@ -1335,9 +1341,13 @@ async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
 # во время ответа на второй вопрос
 @router.callback_query(Text(text=['1', '2', '3', '4', '5', '6']), StateFilter(FSMSurvey.question_2))
 async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
-    question_2 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    if callback.data == '6':
+        question_2 = callback.message.reply_markup.inline_keyboard[1][0].text
+    else:
+        question_2 = callback.message.reply_markup.inline_keyboard[0][int(callback.data) - 1].text
     await state.update_data(question_2=question_2)
-    await message.answer(f'Оцените качество кальяна:', reply_markup=create_question_kb())
+    await callback.message.delete()
+    await callback.message.answer(f'Оцените качество кальяна:', reply_markup=create_question_3_kb())
     await state.set_state(FSMSurvey.question_3)
 
 
@@ -1346,9 +1356,13 @@ async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
 # во время ответа на третий вопрос
 @router.callback_query(Text(text=['1', '2', '3', '4', '5', '6']), StateFilter(FSMSurvey.question_3))
 async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
-    question_3 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    if callback.data == '6':
+        question_3 = callback.message.reply_markup.inline_keyboard[1][0].text
+    else:
+        question_3 = callback.message.reply_markup.inline_keyboard[0][int(callback.data) - 1].text
     await state.update_data(question_3=question_3)
-    await message.answer(f'Оцените качество обслуживания персонала:', reply_markup=create_question_kb())
+    await callback.message.delete()
+    await callback.message.answer(f'Оцените качество обслуживания персонала:', reply_markup=create_question_kb())
     await state.set_state(FSMSurvey.question_4)
 
 
@@ -1356,9 +1370,10 @@ async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
 # во время ответа на четвертый вопрос
 @router.callback_query(Text(text=['1', '2', '3', '4', '5']), StateFilter(FSMSurvey.question_4))
 async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
-    question_4 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    question_4 = callback.data
     await state.update_data(question_4=question_4)
-    await message.answer(f'Оцените качество работы охраны:', reply_markup=create_question_kb())
+    await callback.message.delete()
+    await callback.message.answer(f'Оцените качество работы охраны:', reply_markup=create_question_kb())
     await state.set_state(FSMSurvey.question_5)
 
 
@@ -1366,11 +1381,14 @@ async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
 # во время ответа на пятый вопрос
 @router.callback_query(Text(text=['1', '2', '3', '4', '5']), StateFilter(FSMSurvey.question_5))
 async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
-    question_5 = callback.message.reply_markup.inline_keyboard[int(callback.data.split("_")[1]) - 1][0].text
+    question_5 = callback.data
     db = await state.get_data()
+    event_id = select_one_event_id(db['event_name'])
     user = select_one_user(db['user_id'])
-    insert_survey(user['first_name'], user['last_name'], user['phone'], db['question_1'], db['question_2'], db['question_3'], db['question_4'], question_5, db['event_id'])
-    await message.answer(f'Спасибо за прохождение опроса, с помощью вас мы становимся лучше :)')
+    print(event_id)
+    insert_survey(user['first_name'], user['last_name'], user['phone'], db['question_1'], db['question_2'], db['question_3'], db['question_4'], question_5, event_id)
+    await callback.message.delete()
+    await callback.message.answer(f'Спасибо за прохождение опроса, с помощью вас мы становимся лучше :)')
     await state.clear()
 
 
@@ -1400,13 +1418,11 @@ class FSMShowSurvey(StatesGroup):
 # и отменять процесс регистрации на мероприятие
 @router.callback_query(Text(text='cancel_show'), StateFilter(FSMShowSurvey))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
-    text = f"{LEXICON['/start']}"
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Просмотр опроса отменен')
     await callback.message.delete()
     await callback.message.answer_photo(
         photo=photo,
-        caption=text,
         reply_markup=create_menu_kb(),
         parse_mode='HTML')
     # Завершаем машину состояний
@@ -1457,10 +1473,12 @@ async def process_showsurvey_command(message: Message, state: FSMContext):
                 await message.answer(text=text_2, parse_mode='HTML')
                 await message.answer(text=text_3, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
             # Устанавливаем состояние ожидания выбора мероприятия
-            await state.set_state(FSMShowRegistr.event_choosing)
+            await state.set_state(FSMShowSurvey.event_choosing)
             await state.update_data(id_list=id_list)
     else:
         await message.answer("К сожалению на данный момент запланированных мероприятий нет, попробуйте проверить позже.")
+
+
 
 
 # Этот хэндлер будет срабатывать, если введен корректный номер мероприятия
@@ -1470,43 +1488,52 @@ async def process_event_choosing(message: Message, state: FSMContext):
     id_list = db['id_list']
     survey_list = []
     if int(message.text) in id_list:
-        event = select_one_event(int(message.text))
-        survey_all = select_survey(int(message.text))
+        event = select_one_event(message.text)
+        survey_all = select_survey(message.text)
+        print(survey_all)
         num = 1
         for survey in survey_all:
-            survey_list.append(f'{num}) <b>Имя</b>: {user["first_name"]}\n<b>Фамилия</b>: {user["last_name"]}\n<b>Дата рождения</b>: {user["birthday"]}\n<b>Номер телефона</b>: {user["phone"]}')
+            survey_list.append(f'{num}) <b>Имя</b>: {survey["first_name"]}\n<b>Фамилия</b>: {survey["last_name"]}\n<b>Номер телефона</b>: {survey["phone"]}\n<b>Качество музыки</b>: {survey["question_1"]}\n<b>Качество алкоголя</b>: {survey["question_2"]}\n<b>Качество кальяна</b>: {survey["question_3"]}\n<b>Качество обслуживание персонала</b>: {survey["question_4"]}\n<b>Качество работы охраны</b>: {survey["question_5"]}\n')
             num += 1
         if len(survey_list) != 0:
-            if len(survey_list) <= 20:
-                final_list = f'\n\n'.join(user_list)
+            if len(survey_list) <= 15:
+                final_list = f'\n\n'.join(survey_list)
                 await message.answer(f'На {event["name"]} прошли опрос:\n\n{final_list}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
                 await state.clear()
-            elif len(survey_list) >= 20 and len(survey_list) <= 40:
-                final_list_1 = f'\n\n'.join(user_list[0:20])
-                final_list_2 = f'\n\n'.join(user_list[20:])
+            elif len(survey_list) >= 15 and len(survey_list) <= 30:
+                final_list_1 = f'\n\n'.join(survey_list[0:15])
+                final_list_2 = f'\n\n'.join(survey_list[15:])
                 await message.answer(f'На {event["name"]} прошли опрос:\n\n{final_list_1}', parse_mode='HTML')
                 await message.answer(f'{final_list_2}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
                 await state.clear()
-            elif len(survey_list) >= 40 and len(survey_list) <= 60:
-                final_list_1 = f'\n\n'.join(user_list[0:20])
-                final_list_2 = f'\n\n'.join(user_list[20:40])
-                final_list_3 = f'\n\n'.join(user_list[40:])
+            elif len(survey_list) >= 30 and len(survey_list) <= 45:
+                final_list_1 = f'\n\n'.join(survey_list[0:15])
+                final_list_2 = f'\n\n'.join(survey_list[15:30])
+                final_list_3 = f'\n\n'.join(survey_list[30:])
                 await message.answer(f'На {event["name"]} прошли опрос:\n\n{final_list_1}', parse_mode='HTML')
                 await message.answer(f'{final_list_2}', parse_mode='HTML')
                 await message.answer(f'{final_list_3}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
                 await state.clear()
-            elif len(survey_list) >= 60 and len(survey_list) <= 80:
-                final_list_1 = f'\n\n'.join(user_list[0:20])
-                final_list_2 = f'\n\n'.join(user_list[20:40])
-                final_list_3 = f'\n\n'.join(user_list[40:60])
-                final_list_4 = f'\n\n'.join(user_list[60:])
+            elif len(survey_list) >= 45 and len(survey_list) <= 60:
+                final_list_1 = f'\n\n'.join(survey_list[0:15])
+                final_list_2 = f'\n\n'.join(survey_list[15:30])
+                final_list_3 = f'\n\n'.join(survey_list[30:45])
+                final_list_4 = f'\n\n'.join(survey_list[45:])
                 await message.answer(f'На {event["name"]} прошли опрос:\n\n{final_list_1}', parse_mode='HTML')
                 await message.answer(f'{final_list_2}', parse_mode='HTML')
                 await message.answer(f'{final_list_3}', parse_mode='HTML')
                 await message.answer(f'{final_list_4}', reply_markup=create_backword_menu_kb(), parse_mode='HTML')
                 await state.clear()
         else:
-            await message.answer(f'На {event["name"]} пока не проходили опрос', reply_markup=create_backword_menu_kb())
+            await message.answer(f'На "{event["name"]}" пока не проходили опрос', reply_markup=create_backword_menu_kb())
             await state.clear()
     else:
         await message.answer(text=f'Введен не верный код мероприятия, попробуйте еще раз', reply_markup=create_cancel_show_kb())
+
+
+
+# Этот хэндлер будет срабатывать, если во время
+# ввода номера раздела внесения изменений будет введено что-то некорректное
+@router.message(StateFilter(FSMShowSurvey.event_choosing))
+async def warning_show_survey(message: Message):
+    await message.answer(text=f'Для выбора мероприятия, введите код мероприятия', reply_markup=create_cancel_show_kb())

@@ -2,6 +2,7 @@ import sqlite3
 from aiogram import Bot
 from datetime import timedelta, date, datetime
 from keyboards.other_kb import create_question_kb
+from database.database import select_user, select_id, select_user_id_registr, select_all_events, select_all_users
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
@@ -33,148 +34,8 @@ def to_week_day_month(my_date):
     return new_date
 
 
-def select_all_events():
-    try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
-        cur = conn.cursor()
-        print("База данных подключена к SQLite")
-        cur.execute('SELECT id, name, date, description, photo FROM events')
-        print("Данные получены")
-        events = cur.fetchall()
-        cur.close()
-        event_list = []
-        for event in events:
-            event_list.append({'id': event[0],
-                               'name': event[1],
-                               'date': event[2],
-                               'description': event[3],
-                               'photo': event[4]})
-        if len(event_list) != 0:
-            return event_list
-        else:
-            return []
-    except sqlite3.Error as error:
-        print("Ошибка при получении данных из sqlite", error.__class__, error)
-    finally:
-        if (conn):
-            conn.close()
-            print("Соединение с SQLite закрыто")
 
-
-
-def select_all_users():
-    try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
-        cur = conn.cursor()
-        print("База данных подключена к SQLite")
-        cur.execute('SELECT id, user_id, first_name, last_name, birthday, phone FROM users')
-        print("Данные получены")
-        users = cur.fetchall()
-        cur.close()
-        users_list = []
-        for user in users:
-            users_list.append({'id': user[0],
-                              'user_id': user[1],
-                              'first_name': user[2],
-                              'last_name': user[3],
-                              'birthday': user[4],
-                              'phone': user[5]})
-        if len(users_list) != 0:
-            return users_list
-        else:
-            return []
-    except sqlite3.Error as error:
-        print("Ошибка при получении данных из sqlite", error.__class__, error)
-    finally:
-        if (conn):
-            conn.close()
-            print("Соединение с SQLite закрыто")
-
-
-def select_all_registr():
-    try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
-        cur = conn.cursor()
-        print("База данных подключена к SQLite")
-        cur.execute('SELECT id, user_id, event_id FROM registr')
-        print("Данные получены")
-        users = cur.fetchall()
-        cur.close()
-        user_list = []
-        for user in users:
-            user_list.append({'id': user[0],
-                              'user_id': user[1],
-                              'event_id': user[2]})
-        if len(user_list) != 0:
-            return user_list
-        else:
-            return []
-    except sqlite3.Error as error:
-        print("Ошибка при получении данных из sqlite", error.__class__, error)
-    finally:
-        if (conn):
-            conn.close()
-            print("Соединение с SQLite закрыто")
-
-
-def select_user_id_registr(event_id):
-    try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
-        cur = conn.cursor()
-        print("База данных подключена к SQLite")
-        cur.execute('SELECT user_id FROM registr WHERE event_id="%s"' % (event_id))
-        print("Данные получены")
-        users = cur.fetchall()
-        cur.close()
-        user_list = []
-        for user in users:
-            user_list.append(user[0])
-        if len(user_list) != 0:
-            return user_list
-        else:
-            return []
-    except sqlite3.Error as error:
-        print("Ошибка при получении данных из sqlite", error.__class__, error)
-    finally:
-        if (conn):
-            conn.close()
-            print("Соединение с SQLite закрыто")
-
-
-def select_id():
-    try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
-        cur = conn.cursor()
-        print("База данных подключена к SQLite")
-        cur.execute('SELECT user_id FROM ids')
-        print("Данные получены")
-        users = cur.fetchall()
-        cur.close()
-        users_list = []
-        for user in users:
-            users_list.append(user[0])
-        if len(users_list) != 0:
-            return users_list
-        else:
-            return []
-    except sqlite3.Error as error:
-        print("Ошибка при получении данных из sqlite", error.__class__, error)
-    finally:
-        if (conn):
-            conn.close()
-            print("Соединение с SQLite закрыто")
-
-
-class FSMSurvey(StatesGroup):
-    # Создаем экземпляры класса State, последовательно
-    # перечисляя возможные состояния, в которых будет находиться
-    # бот в разные моменты взаимодействия с пользователем
-    question_1 = State()    # Состояние ожидания ответа на второй вопрос
-
-
-
-
-async def send_message_cron(bot: Bot, state: FSMContext):
+async def send_message_cron(bot: Bot):
     event_list = select_all_events()
     user_list = select_all_users()
     for event in event_list:
@@ -186,12 +47,6 @@ async def send_message_cron(bot: Bot, state: FSMContext):
                     await bot.send_photo(chat_id=int(user['user_id']), photo=event['photo'], caption=text)
                 except:
                     print('Произошла ошибка при отправке напоминания')
-        if event['date'] == next_day_date():
-            users_id = select_user_id_registr(event['id'])
-            for user in users_id:
-                bot.send_message(user, f'Вы вчера были на {event["name"]} пройдите короткий опрос, это поможет нам стать лучше :)\n\n Оцените качество музыки:', reply_markup=create_question_kb())
-                await state.update_data(event_id=event['id'])
-                await state.set_state(FSMSurvey.question_1)
     for user in user_list:
         if to_week_day_month(user['birthday']) == datetime.now().strftime('%d.%m'):
             try:
@@ -205,12 +60,30 @@ async def send_message_cron(bot: Bot, state: FSMContext):
                 print('Произошла ошибка при отправке поздравления 2')
 
 
+
+async def send_message_cron_2(bot: Bot):
+    event_list = select_all_events()
+    user_list = select_all_users()
+    for event in event_list:
+        if event['date'] == next_day_date():
+            id_list = select_user_id_registr(event['id'])
+            try:
+                for id in id_list:
+                    user = select_user(id)
+                    await bot.send_message(chat_id=int(user['user_id']), text=f'Вы вчера были на "{event["name"]}" пройдите короткий опрос, это поможет нам стать лучше :)\n\n Оцените качество музыки:', reply_markup=create_question_kb())
+            except:
+                print('Произошла ошибка при отправке опроса')
+
+
 async def send_message_interval(bot: Bot):
     ids = select_id()
-    registr_list = select_all_registr()
-    registr_id_list = []
-    for user in registr_list:
-        registr_id_list.append(user['user_id'])
+    user_list = select_all_users()
+    user_id_list = []
+    for user in user_list:
+        user_id_list.append(user['user_id'])
     for id in ids:
-        if id not in registr_id_list:
-            bot.send_message(id, f'Вы не закончили регистрацию...')
+        if id not in user_id_list:
+            try:
+                await bot.send_message(id, f'Вы не закончили регистрацию...1')
+            except:
+                print('Произошла ошибка при отправке сообщения о незаконченной регистрации')
