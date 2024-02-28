@@ -8,7 +8,8 @@ import sqlite3
 
 def insert_event(name, date, description, photo):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('INSERT INTO events (name, date, description, photo)'
@@ -27,7 +28,8 @@ def insert_event(name, date, description, photo):
 
 def select_all_events():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id, name, date, description, photo FROM events')
@@ -54,7 +56,8 @@ def select_all_events():
 
 def select_one_event(event_id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id, name, date, description, photo FROM events WHERE id="%s"' % (event_id))
@@ -82,7 +85,8 @@ def select_one_event(event_id):
 
 def select_one_event_id(event_name):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id FROM events WHERE name="%s"' % (event_name))
@@ -106,7 +110,8 @@ def select_one_event_id(event_name):
 
 def delete_event(event_id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('DELETE FROM events WHERE id="%s";' % (event_id))
@@ -130,7 +135,8 @@ def delete_event(event_id):
 
 def insert_user(user_id, first_name, last_name, birthday, phone):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('INSERT INTO users (user_id, first_name, last_name, birthday, phone)'
@@ -149,7 +155,8 @@ def insert_user(user_id, first_name, last_name, birthday, phone):
 
 def delete_user(id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('DELETE FROM users WHERE id="%s";' % (id))
@@ -167,7 +174,8 @@ def delete_user(id):
 
 def select_all_users():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id, user_id, first_name, last_name, birthday, phone FROM users')
@@ -196,7 +204,8 @@ def select_all_users():
 
 def select_users_id():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT user_id FROM users')
@@ -221,7 +230,8 @@ def select_users_id():
 
 def select_all_ids():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id FROM users')
@@ -245,7 +255,8 @@ def select_all_ids():
 
 def select_one_user(user_id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id, user_id, first_name, last_name, birthday, phone FROM users WHERE user_id="%s"' % (user_id))
@@ -274,7 +285,8 @@ def select_one_user(user_id):
 
 def select_user(id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT user_id, first_name, last_name, birthday, phone FROM users WHERE id="%s"' % (id))
@@ -308,7 +320,8 @@ def select_user(id):
 
 def insert_registr(user_id, event_id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('INSERT INTO registr (user_id, event_id)'
@@ -327,7 +340,8 @@ def insert_registr(user_id, event_id):
 
 def select_all_registr():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id, user_id, event_id FROM registr')
@@ -354,7 +368,8 @@ def select_all_registr():
 
 def select_user_id_registr(event_id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT user_id FROM registr WHERE event_id="%s"' % (event_id))
@@ -378,7 +393,8 @@ def select_user_id_registr(event_id):
 
 def delete_registr(id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('DELETE FROM registr WHERE id="%s";' % (id))
@@ -402,7 +418,8 @@ def delete_registr(id):
 
 def insert_booking_table(first_name, last_name, guest, date, phone):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('INSERT INTO booking_table (first_name, last_name, guest, date, phone)'
@@ -422,7 +439,8 @@ def insert_booking_table(first_name, last_name, guest, date, phone):
 
 def select_booking_table(date):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT first_name, last_name, guest, phone FROM booking_table WHERE date="%s"' % (date))
@@ -459,7 +477,8 @@ def select_booking_table(date):
 
 def insert_card(first_name, last_name, birthday, phone, card):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('INSERT INTO cards (first_name, last_name, birthday, phone, card)'
@@ -478,7 +497,8 @@ def insert_card(first_name, last_name, birthday, phone, card):
 
 def delete_card(card):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('DELETE FROM cards WHERE card="%s";' % (card))
@@ -495,7 +515,8 @@ def delete_card(card):
 
 def select_all_cards():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id, first_name, last_name, birthday, phone, card FROM cards')
@@ -524,7 +545,8 @@ def select_all_cards():
 
 def select_cards_number():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT card FROM cards')
@@ -548,7 +570,8 @@ def select_cards_number():
 
 def select_one_card(card):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT id, first_name, last_name, birthday, phone, card FROM cards WHERE card="%s"' % (card))
@@ -587,7 +610,8 @@ def select_one_card(card):
 
 def insert_survey(first_name, last_name, phone, question_1, question_2, question_3, question_4, question_5, event_id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('INSERT INTO survey(first_name, last_name, phone, question_1, question_2, question_3, question_4, question_5, event_id)'
@@ -606,7 +630,8 @@ def insert_survey(first_name, last_name, phone, question_1, question_2, question
 
 def select_survey(event_id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT first_name, last_name, phone, question_1, question_2, question_3, question_4, question_5 FROM survey WHERE event_id="%s"' % (event_id))
@@ -637,7 +662,8 @@ def select_survey(event_id):
 
 def select_all_survey():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT first_name, last_name, phone, question_1, question_2, question_3, question_4, question_5, event_id FROM survey')
@@ -680,7 +706,8 @@ def select_all_survey():
 
 def insert_id(user_id):
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('INSERT INTO ids (user_id)'
@@ -698,7 +725,8 @@ def insert_id(user_id):
 
 def select_id():
     try:
-        conn = sqlite3.connect('Loft_family_bot/db.sql')
+        # conn = sqlite3.connect('Loft_family_bot/db.sql')
+        conn = sqlite3.connect('/home/nikita/Loft_family_bot/db.sql')
         cur = conn.cursor()
         print("База данных подключена к SQLite")
         cur.execute('SELECT user_id FROM ids')
@@ -718,12 +746,3 @@ def select_id():
         if (conn):
             conn.close()
             print("Соединение с SQLite закрыто")
-
-# delete_user(3)
-# print(select_all_users())
-# delete_registr(3)
-# print(select_all_registr())
-# print(select_all_ids())
-# insert_registr(4, 1)
-# print(select_survey(2))
-# print(select_all_survey())
