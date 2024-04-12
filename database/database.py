@@ -529,7 +529,7 @@ def select_all_cards():
                               'last_name': user[2],
                               'birthday': user[3],
                               'phone': user[4],
-                              'card': user[5]})
+                              'card': int(user[5])})
         if len(users_list) != 0:
             return users_list
         else:

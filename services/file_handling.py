@@ -11,6 +11,22 @@ def date_func():
     return date_list
 
 
+def next_day_date():
+    date_1 = date.today() - timedelta(days=2)
+    date_2 = datetime.strftime(date_1, '%d.%m.%Y')
+    date_2 = f'{date_2} 00:00'
+    next_day_date = datetime.strptime(date_2, '%d.%m.%Y %H:%M')
+    return next_day_date
+
+
+def next_day_date_2():
+    date_1 = date.today() - timedelta(days=5)
+    date_2 = datetime.strftime(date_1, '%d.%m.%Y')
+    date_2 = f'{date_2} 00:00'
+    next_day_date = datetime.strptime(date_2, '%d.%m.%Y %H:%M')
+    return next_day_date
+
+
 def now_time(date):
     date_1 = datetime.strptime(date, '%d.%m.%Y %H:%M')
     return date_1

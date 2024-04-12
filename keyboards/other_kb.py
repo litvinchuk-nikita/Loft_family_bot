@@ -97,6 +97,14 @@ def create_cancel_addevent_kb() -> InlineKeyboardMarkup:
     return kb_builder.as_markup()
 
 
+def create_cancel_deleteevent_kb() -> InlineKeyboardMarkup:
+    cancel_button: InlineKeyboardButton = InlineKeyboardButton(
+        text='Отменить удаление мероприятия', callback_data='cancel_deleteevent')
+    kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
+    kb_builder.add(cancel_button)
+    return kb_builder.as_markup()
+
+
 def create_cancel_addbooking_kb() -> InlineKeyboardMarkup:
     cancel_button: InlineKeyboardButton = InlineKeyboardButton(
         text='Отменить добавление брони', callback_data='cancel_addbooking')
@@ -124,6 +132,14 @@ def create_cancel_booking_kb() -> InlineKeyboardMarkup:
 def create_cancel_card_kb() -> InlineKeyboardMarkup:
     cancel_button: InlineKeyboardButton = InlineKeyboardButton(
         text='Отменить добавление карты', callback_data='cancel_card')
+    kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
+    kb_builder.add(cancel_button)
+    return kb_builder.as_markup()
+
+
+def create_cancel_delete_card_kb() -> InlineKeyboardMarkup:
+    cancel_button: InlineKeyboardButton = InlineKeyboardButton(
+        text='Отменить удаление карты', callback_data='cancel_card')
     kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
     kb_builder.add(cancel_button)
     return kb_builder.as_markup()

@@ -11,10 +11,11 @@ from database.database import (insert_event, select_all_events, select_one_event
                                select_booking_table, select_survey, insert_survey, insert_id, select_id, select_all_ids, select_one_event_id)
 from keyboards.other_kb import (create_menu_kb, create_date_kb, create_date_kb_2, create_backword_menu_kb, create_yes_no_kb, create_cancel_registr_kb,
                                 create_cancel_addevent_kb, create_cancel_show_kb, create_cancel_booking_kb, create_cancel_card_kb, create_cancel_newslatter_kb,
-                                create_question_kb, create_question_2_kb, create_question_3_kb, create_cancel_addbooking_kb)
+                                create_question_kb, create_question_2_kb, create_question_3_kb, create_cancel_addbooking_kb, create_cancel_delete_card_kb,
+                                create_cancel_deleteevent_kb)
 from lexicon.lexicon import LEXICON
 from filters.filters import IsAdmin, IsSecurity
-from services.file_handling import date_func, check_date, check_phone, now_time
+from services.file_handling import date_func, check_date, check_phone, now_time, next_day_date, next_day_date_2
 
 router: Router = Router()
 
@@ -365,6 +366,7 @@ class FSMAdmin(StatesGroup):
     # бот в разные моменты взаимодействия с пользователем
     add_event = State()       # Состояние добавления мероприятия
     add_photo_event = State() # Состояние добаления афиши мероприятия
+    delete_event = State()    # Состояние удаления мероприятия
 
 
 
@@ -439,6 +441,96 @@ async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
 
 
 
+
+                                # Функция удаления мероприятия
+
+
+
+
+
+
+# Этот хэндлер будет срабатывать на отправку команды /deleteevent
+# и отправлять в чат правила добавления мероприятия
+@router.message(Command(commands='deleteevent'), StateFilter(default_state), IsAdmin(config.tg_bot.admin_ids))
+async def process_addevent_command(message: Message, state: FSMContext):
+    events_list = []
+    id_list = []
+    num = 1
+    events = select_all_events()
+    if len(events) != 0:
+        for event in events:
+            try:
+                if now_time(f'{event["date"]} 22:00') < datetime.now():
+                    continue
+                events_list.append(f'{num}) "{event["name"]}"\n{event["description"]}\n'
+                            f'Дата: {event["date"]}\n'
+                            f'<b>КОД МЕРОПРИЯТИЯ 👉🏻 {event["id"]}</b>')
+                id_list.append(event["id"])
+            except:
+                print(f"При проверке мероприятия произошла ошибка: {Exception.__class__}")
+            num += 1
+        if len(events_list) == 0:
+            await message.answer("К сожалению на данный момент нету запланированных мероприятий, попробуйте проверить позже.")
+        else:
+            events = f'\n\n'.join(events_list)
+            text = f"{events}\n\n<i>ЧТОБЫ УДАЛИТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+            await message.answer(text=text, reply_markup=create_cancel_deleteevent_kb(), parse_mode='HTML')
+            # Устанавливаем состояние ожидания выбора мероприятия
+            await state.set_state(FSMAdmin.delete_event)
+            await state.update_data(id_list=id_list)
+    else:
+        await message.answer("К сожалению на данный момент запланированных мероприятий нет, попробуйте проверить позже.")
+
+
+# Этот хэндлер будет проверять правильность введенных данных
+# и отправлять сообщение о добавлении фото
+@router.message(IsAdmin(config.tg_bot.admin_ids), StateFilter(FSMAdmin.delete_event), lambda x: x.text.isdigit())
+async def process_delete_event(message: Message, state: FSMContext):
+    db = await state.get_data()
+    id_list = db['id_list']
+    if int(message.text) in id_list:
+        delete_event(int(message.text))
+        await message.answer('Мероприятие удалено')
+        # Завершаем машину состояний
+        await state.clear()
+    else:
+        await message.answer(text=f'Введен не верный код мероприятия, попробуйте еще раз', reply_markup=create_cancel_deleteevent_kb())
+
+
+
+# Этот хэндлер будет срабатывать, если во время
+# выбора мероприятия будет введено что-то некорректное
+@router.message(StateFilter(FSMAdmin.delete_event))
+async def warning_not_event(message: Message):
+    await message.answer(
+        text=f'Для удаления мероприятия введите код мероприятия', reply_markup=create_cancel_deleteevent_kb())
+
+
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить удаление мероприятия"
+# и отменять процесс регистрации на мероприятие
+@router.callback_query(Text(text='cancel_delete_event'), StateFilter(FSMAdmin))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Удаление мероприятия отменено')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
+
+
+
+
+
+
+
+
+
+
                                 # ФУНКЦИЯ ПРОСМОТРА РЕГИСТРАЦИИ НА МЕРОПРИЯТИЕ
 
 
@@ -485,6 +577,8 @@ async def process_showregistr_command(message: Message, state: FSMContext):
         if len(events) != 0:
             for event in events:
                 try:
+                    if next_day_date() >= now_time(f'{event["date"]} 00:00'):
+                        continue
                     events_list.append(f'{num}) "{event["name"]}"\n{event["description"]}\n'
                                 f'Дата: {event["date"]}\n'
                                 f'<b>КОД МЕРОПРИЯТИЯ 👉🏻 {event["id"]}</b>')
@@ -1033,11 +1127,12 @@ class FSMCard(StatesGroup):
     # перечисляя возможные состояния, в которых будет находиться
     # бот в разные моменты взаимодействия с пользователем
     add_card = State()       # Состояние добавления карты
+    delete_card = State()    # Состояние удаления карты
 
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить добавление карты"
 # и отменять процесс бронирования столика
-@router.callback_query(Text(text='cancel_card'), StateFilter(FSMCard))
+@router.callback_query(Text(text='cancel_card'), StateFilter(FSMCard.add_card))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Добавление карты отменено')
@@ -1117,6 +1212,7 @@ async def process_add_event(message: Message, state: FSMContext):
 async def process_addcard_command(message: Message, state: FSMContext):
     card_list = []
     cards = select_all_cards()
+    cards = sorted(cards, key=lambda x: x['card'])
     num = 1
     for card in cards:
         card_list.append(f'{num}) Номер клубной карты: {card["card"]}\nИмя: {card["first_name"]}\nФамилия: {card["last_name"]}\nДата рождения: {card["birthday"]}\nНомер телефона: {card["phone"]}')
@@ -1175,6 +1271,64 @@ async def process_addcard_command(message: Message, state: FSMContext):
 
 
 
+                                 # Функция удаления владельцев клубных карт
+
+
+
+
+
+# Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить удаление карты"
+# и отменять процесс бронирования столика
+@router.callback_query(Text(text='cancel_card'), StateFilter(FSMCard.delete_card))
+async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
+    photo = URLInputFile(url=LEXICON['menu_photo'])
+    await callback.message.answer('Удаление карты отменено')
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo,
+        reply_markup=create_menu_kb(),
+        parse_mode='HTML')
+    # Завершаем машину состояний
+    await state.clear()
+
+
+# Этот хэндлер будет срабатывать на отправку команды /deletecard
+# и отправлять в чат правила удаления карты
+@router.message(Command(commands='deletecard'), StateFilter(default_state), IsAdmin(config.tg_bot.admin_ids))
+async def process_deletecard_command(message: Message, state: FSMContext):
+    text = 'Для удаления карты введите номер карты'
+    await message.answer(text=text, reply_markup=create_cancel_delete_card_kb())
+    await state.set_state(FSMCard.delete_card)
+
+
+
+# Этот хэндлер будет проверять правильность введенных данных
+# и отправлять сообщение об удалении владельца карты
+@router.message(IsAdmin(config.tg_bot.admin_ids), StateFilter(FSMCard.delete_card),
+lambda x: x.text.isdigit())
+async def process_delete_card(message: Message, state: FSMContext):
+    cards_num = []
+    cards = select_all_cards()
+    for card in cards:
+        cards_num.append(card['card'])
+    if int(message.text) in cards_num:
+        try:
+            delete_card(message.text)
+            await message.answer('Владелец клубной карты удален', reply_markup=create_backword_menu_kb())
+            # Завершаем машину состояний
+            await state.clear()
+        except:
+            print('Произошла ошибка при удалении владельца клубной карты')
+    else:
+        await message.answer(f'Введенные данные не корректны, карты с таким номером нету\n', reply_markup=create_cancel_delete_card_kb())
+
+
+# Этот хэндлер будет срабатывать, если во время
+# ввода номера карты будет введено что-то некорректное
+@router.message(StateFilter(FSMCard.delete_card))
+async def warning_delete_card(message: Message):
+    await message.answer(text=f'Для удаления карты введите номер карты', reply_markup=create_cancel_delete_card_kb())
+
 
 
 
@@ -1230,7 +1384,7 @@ async def process_create_text_newsletter(message: Message, state: FSMContext):
         # Устанавливаем состояние ожидания подтверждения сформированной рассылки
         await state.set_state(FSMNewsletter.verification_newslatter)
     else:
-        await message.answer('Добавьте фото рассылки', reply_markup=create_cancel_newslatter_kb())
+        await message.answer('Добавьте фото или видео рассылки', reply_markup=create_cancel_newslatter_kb())
         # Устанавливаем состояние ожидания добавления фото
         await state.set_state(FSMNewsletter.add_photo)
 
@@ -1247,8 +1401,16 @@ async def process_create_text_newsletter(message: Message, state: FSMContext):
         await state.update_data(photo=photo)
         # Устанавливаем состояние ожидания подтверждения сформированной рассылки
         await state.set_state(FSMNewsletter.verification_newslatter)
+    elif message.video:
+        db = await state.get_data()
+        video = message.video.file_id
+        await message.answer(f'Ниже представлена сформированная рассылка, введите:\n\n1 - чтобы отправить текущий вариант;\n2 - чтобы изменить текст;\n3 - чтобы изменить фото или видео', reply_markup=create_cancel_newslatter_kb())
+        await message.answer_video(video=video, caption=db['text'])
+        await state.update_data(video=video)
+        # Устанавливаем состояние ожидания подтверждения сформированной рассылки
+        await state.set_state(FSMNewsletter.verification_newslatter)
     else:
-        await message.answer('Добавьте фото рассылки', reply_markup=create_cancel_newslatter_kb())
+        await message.answer('Добавьте фото или видео рассылки', reply_markup=create_cancel_newslatter_kb())
 
 
 
@@ -1261,7 +1423,10 @@ async def process_fill_phone(message: Message, state: FSMContext, bot: Bot):
         users_id = select_users_id()
         for id in users_id:
             try:
-                await bot.send_photo(chat_id=id, photo=db['photo'], caption=db['text'])
+                if 'photo' in db.keys():
+                    await bot.send_photo(chat_id=id, photo=db['photo'], caption=db['text'])
+                elif 'video' in db.keys():
+                    await bot.send_video(chat_id=id, video=db['video'], caption=db['text'])
             except:
                 print(f'Произошла ошибка при отправке рассылки на id - {id}')
         await message.answer('Рассылка отправлена', reply_markup=create_backword_menu_kb())
@@ -1271,7 +1436,7 @@ async def process_fill_phone(message: Message, state: FSMContext, bot: Bot):
         # Устанавливаем состояние ввода текста рассылки
         await state.set_state(FSMNewsletter.create_text)
     elif int(message.text) == 3:
-        await message.answer(f'Отправьте новое фото рассылки', reply_markup=create_cancel_newslatter_kb())
+        await message.answer(f'Отправьте новое фото или видео рассылки', reply_markup=create_cancel_newslatter_kb())
         # Устанавливаем состояние добавления фото
         await state.set_state(FSMNewsletter.add_photo)
 
@@ -1441,6 +1606,8 @@ async def process_showsurvey_command(message: Message, state: FSMContext):
     if len(events) != 0:
         for event in events:
             try:
+                if next_day_date_2() >= now_time(f'{event["date"]} 00:00'):
+                    continue
                 events_list.append(f'{num}) "{event["name"]}"\n{event["description"]}\n'
                             f'Дата: {event["date"]}\n'
                             f'<b>КОД МЕРОПРИЯТИЯ 👉🏻 {event["id"]}</b>')
