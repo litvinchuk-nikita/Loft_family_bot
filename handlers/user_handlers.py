@@ -510,7 +510,7 @@ async def warning_not_event(message: Message):
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки "Отменить удаление мероприятия"
 # и отменять процесс регистрации на мероприятие
-@router.callback_query(Text(text='cancel_delete_event'), StateFilter(FSMAdmin))
+@router.callback_query(Text(text='cancel_deleteevent'), StateFilter(FSMAdmin))
 async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
     photo = URLInputFile(url=LEXICON['menu_photo'])
     await callback.message.answer('Удаление мероприятия отменено')
@@ -610,6 +610,19 @@ async def process_showregistr_command(message: Message, state: FSMContext):
                     await message.answer(text=text_1, parse_mode='HTML')
                     await message.answer(text=text_2, parse_mode='HTML')
                     await message.answer(text=text_3, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
+                elif len(events_list) >= 61 and len(events_list) <= 80:
+                    events_1 = f'\n\n'.join(events_list[0:20])
+                    events_2 = f'\n\n'.join(events_list[20:40])
+                    events_3 = f'\n\n'.join(events_list[40:60])
+                    events_4 = f'\n\n'.join(events_list[60:])
+                    text_1 = f"<b>ВЫБЕРИТЕ МЕРОПРИЯТИЕ</b>\n\n{events_1}"
+                    text_2 = f"{events_2}"
+                    text_3 = f"{events_3}"
+                    text_4 = f"{events_4}\n\n<i>ЧТОБЫ ВЫБРАТЬ МЕРОПРИЯТИЕ ВВЕДИТЕ КОД МЕРОПРИЯТИЯ</i>❗️"
+                    await message.answer(text=text_1, parse_mode='HTML')
+                    await message.answer(text=text_2, parse_mode='HTML')
+                    await message.answer(text=text_3, parse_mode='HTML')
+                    await message.answer(text=text_4, reply_markup=create_cancel_show_kb(),parse_mode='HTML')
                 # Устанавливаем состояние ожидания выбора мероприятия
                 await state.set_state(FSMShowRegistr.event_choosing)
                 await state.update_data(id_list=id_list)
