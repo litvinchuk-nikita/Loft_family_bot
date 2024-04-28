@@ -213,3 +213,11 @@ def create_question_3_kb() -> InlineKeyboardMarkup:
     kb_builder.add(button_1, button_2, button_3, button_4, button_5, button_6, button_cancel)
     kb_builder.adjust(5, 1, 1)
     return kb_builder.as_markup()
+
+
+def create_cancel_survey_kb() -> InlineKeyboardMarkup:
+    cancel_button: InlineKeyboardButton = InlineKeyboardButton(
+        text='Закрыть опрос', callback_data='cancel_survey')
+    kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
+    kb_builder.add(cancel_button)
+    return kb_builder.as_markup()

@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+import time
 from config_data.config import Config, load_config
 from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
@@ -9,10 +10,10 @@ from database.database import (insert_event, select_all_events, select_one_event
                                select_users_id, insert_registr, select_all_registr, insert_card, select_all_cards, select_cards_number,
                                delete_card, select_one_card, select_user_id_registr, select_user, select_one_user, insert_booking_table,
                                select_booking_table, select_survey, insert_survey, insert_id, select_id, select_all_ids, select_one_event_id)
-from keyboards.other_kb import (create_menu_kb, create_date_kb, create_date_kb_2, create_backword_menu_kb, create_yes_no_kb, create_cancel_registr_kb,
+from keyboards.other_kb import (create_menu_kb, create_date_kb, create_date_kb_2, create_backword_menu_kb,          create_yes_no_kb, create_cancel_registr_kb,
                                 create_cancel_addevent_kb, create_cancel_show_kb, create_cancel_booking_kb, create_cancel_card_kb, create_cancel_newslatter_kb,
                                 create_question_kb, create_question_2_kb, create_question_3_kb, create_cancel_addbooking_kb, create_cancel_delete_card_kb,
-                                create_cancel_deleteevent_kb)
+                                create_cancel_deleteevent_kb, create_cancel_survey_kb)
 from lexicon.lexicon import LEXICON
 from filters.filters import IsAdmin, IsSecurity
 from services.file_handling import date_func, check_date, check_phone, now_time, next_day_date, next_day_date_2
@@ -527,6 +528,31 @@ async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
 
 
 
+
+
+
+
+                                # ФУНКЦИЯ ПРОСМОТРА ВСЕХ ЗАРЕГИСТРИРОВАННЫХ
+
+
+
+# этот хэндлер будет срабатывать на команду /show_all_registr
+# и отправлять пользователю сообщение с выбором даты
+@router.message(Command(commands='show_all_registr'), StateFilter(default_state))
+async def process_show_all_registr_command(message: Message):
+    if message.from_user.id in config.tg_bot.admin_ids:
+        all_registr = select_all_users()
+        user_list = []
+        num = 1
+        for user in all_registr:
+            user_list.append(f'{num}) <b>Имя</b>: {user["first_name"]}\n<b>Фамилия</b>: {user["last_name"]}\n<b>Дата рождения</b>: {user["birthday"]}\n<b>Номер телефона</b>: {user["phone"]}')
+            num += 1
+        num_1 = 1
+        for user in user_list:
+            await message.answer(text=user, parse_mode='HTML')
+            num_1 += 1
+            if num_1 % 50 == 0:
+                time.sleep(6)
 
 
 
@@ -1500,7 +1526,7 @@ async def process_cancel_press(callback: CallbackQuery, state: FSMContext):
 # ввода номера раздела внесения изменений будет введено что-то некорректное
 @router.message(StateFilter(FSMSurvey))
 async def warning_survey(message: Message):
-    await message.answer(text=f'Вы находитесь в режиме опроса, чтобы использовать другие возможности бота пройдите опрос или отмените его')
+    await message.answer(text=f'Вы находитесь в режиме опроса, чтобы использовать другие возможности бота пройдите опрос или отмените его', reply_markup=create_cancel_survey_kb())
 
 
 # Этот хэндлер будет срабатывать на нажатие инлайн-кнопки с оценкой
@@ -1563,6 +1589,7 @@ async def process_question_1_press(callback: CallbackQuery, state: FSMContext):
     db = await state.get_data()
     event_id = select_one_event_id(db['event_name'])
     user = select_one_user(db['user_id'])
+    print(user)
     print(event_id)
     insert_survey(user['first_name'], user['last_name'], user['phone'], db['question_1'], db['question_2'], db['question_3'], db['question_4'], question_5, event_id)
     await callback.message.delete()
